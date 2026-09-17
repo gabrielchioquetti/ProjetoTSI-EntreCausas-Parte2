@@ -1,272 +1,162 @@
 import { useEffect, useState } from "react";
-
+import slides from "../../data/ongs";
 function Hero() {
-const [slideAtual, setSlideAtual] = useState(0);
-const [pausado, setPausado] = useState(false);
+  const [slideAtual, setSlideAtual] = useState(0);
+  const [pausado, setPausado] = useState(false);
 
-const slides = [
-{
-imagem: "/img/hero/slide-1.png",
-titulo: "Lorem ipsum dolor sit amet",
-descricao:
-"Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
-link: "#",
-},
-{
-imagem: "/img/hero/slide-2.png",
-titulo: "Ut enim ad minim veniam",
-descricao:
-"Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.",
-link: "#titulo-descobrir",
-},
-{
-imagem: "/img/hero/slide-3.png",
-titulo: "Duis aute irure dolor reprehenderit",
-descricao:
-"Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.",
-link: "#sobre",
-},
-{
-imagem: "/img/hero/slide-4.png",
-titulo: "Excepteur sint occaecat cupidatat",
-descricao:
-"Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.",
-link: "#titulo-descobrir",
-},
-];
+  const mudarSlide = (novoIndice) => {
+    setSlideAtual((novoIndice + slides.length) % slides.length);
+  };
 
-/*
+  // Timer automático
+  useEffect(() => {
+    if (pausado) return;
 
-Avança ou volta o slide.
-O operador % faz o carrossel voltar ao primeiro
-quando chega ao último e vice-versa.
-*/
-const mudarSlide = (novoIndice) => {
-setSlideAtual(
-(novoIndice + slides.length) % slides.length
-);
-};
+    const timer = setInterval(() => {
+      setSlideAtual((atual) => (atual + 1) % slides.length);
+    }, 5000);
 
-/*
+    return () => clearInterval(timer);
+  }, [pausado, slides.length]);
 
-Carrossel automático.
-Mantém os 5 segundos do JavaScript original.
-*/
-useEffect(() => {
-if (pausado) {
-return;
-}
-const intervalo = setInterval(() => {
-  setSlideAtual((indiceAtual) => {
-    return (indiceAtual + 1) % slides.length;
-  });
-}, 5000);
+  const slide = slides[slideAtual];
 
-return () => clearInterval(intervalo);
-
-}, [pausado, slides.length]);
-
-/*
-
-Permite usar as setas esquerda e direita do teclado
-quando o carrossel estiver em foco.
-*/
-const handleKeyDown = (event) => {
-if (event.key === "ArrowLeft") {
-event.preventDefault();
-mudarSlide(slideAtual - 1);
-}
-if (event.key === "ArrowRight") {
-  event.preventDefault();
-  mudarSlide(slideAtual + 1);
-}
-
-};
-
-/*
-
-Suporte a swipe no celular.
-*/
-const [inicioToque, setInicioToque] = useState(null);
-
-const handleTouchStart = (event) => {
-const toque = event.touches[0];
-
-if (!toque) {
-  return;
-}
-
-setInicioToque({
-  x: toque.clientX,
-  y: toque.clientY,
-});
-
-setPausado(true);
-
-};
-
-const handleTouchEnd = (event) => {
-if (!inicioToque) {
-setPausado(false);
-return;
-}
-
-const toque = event.changedTouches[0];
-
-if (!toque) {
-  setInicioToque(null);
-  setPausado(false);
-  return;
-}
-
-const deltaX = toque.clientX - inicioToque.x;
-const deltaY = toque.clientY - inicioToque.y;
-
-const limiteSwipe = 45;
-
-/*
- * Só considera swipe quando o movimento horizontal
- * for maior que o vertical.
- */
-if (
-  Math.abs(deltaX) > limiteSwipe &&
-  Math.abs(deltaX) > Math.abs(deltaY)
-) {
-  if (deltaX < 0) {
-    mudarSlide(slideAtual + 1);
-  } else {
-    mudarSlide(slideAtual - 1);
-  }
-}
-
-setInicioToque(null);
-setPausado(false);
-
-};
-
-return (
-<section id="hero" aria-label="Destaques">
-<div
-className="hero-slider"
-data-hero-slider
-aria-roledescription="carrossel"
-aria-label="Slides de destaque"
-tabIndex="0"
-onMouseEnter={() => setPausado(true)}
-onMouseLeave={() => setPausado(false)}
-onFocus={() => setPausado(true)}
-onBlur={() => setPausado(false)}
-onKeyDown={handleKeyDown}
-onTouchStart={handleTouchStart}
-onTouchEnd={handleTouchEnd}
->
-{/* Região utilizada para informar leitores de tela */}
-<div className="hero-live-region sr-only" aria-live="polite" aria-atomic="true" >
-Slide {slideAtual + 1} de {slides.length}
-</div>
-
-    {slides.map((slide, index) => {
-      const ativo = index === slideAtual;
-
-      return (
-        <div
-          key={slide.imagem}
-          className={`hero-slide ${ativo ? "is-active" : ""}`}
-          role="group"
-          aria-roledescription="slide"
-          aria-label={`Slide ${index + 1} de ${slides.length}`}
-          aria-hidden={!ativo}
-          style={{
-            backgroundImage: `url("${slide.imagem}")`,
-          }}
-        >
-          <div className="hero-overlay"></div>
-
-          <div className="hero-content">
-            <h1 id={index === 0 ? "titulo-hero" : undefined}>
-              {slide.titulo}
-            </h1>
-
-            <p className="hero-sub">
-              {slide.descricao}
-            </p>
-
-            <div className="hero-actions">
-              <a
-                href={slide.link}
-                className="btn btn--primary"
-                tabIndex={ativo ? 0 : -1}
-              >
-                Conhecer Causa
-
-                <i
-                  className="fa-solid fa-arrow-right"
-                  aria-hidden="true"
-                ></i>
-              </a>
-            </div>
-          </div>
-        </div>
-      );
-    })}
-
-    {/* Controles do carrossel */}
-    <div
-      className="hero-controls"
-      role="group"
-      aria-label="Controles do carrossel"
+  return (
+    <section
+      id="hero"
+      className="relative h-[95vh] w-full overflow-hidden"
+      aria-label="Destaques"
+      onMouseEnter={() => setPausado(true)}
+      onMouseLeave={() => setPausado(false)}
     >
-      <button
-        className="hero-arrow hero-arrow--prev"
-        type="button"
-        aria-label="Slide anterior"
-        onClick={() => mudarSlide(slideAtual - 1)}
-      >
-        <i
-          className="fa-solid fa-chevron-left"
-          aria-hidden="true"
-        ></i>
-      </button>
+      {/* IMAGEM DE FUNDO */}
+      <img
+        src={slide?.imagens?.[0]?.src || "/img/default/ongs.png"}
+        alt=""
+        className="
+      absolute
+      inset-0
+      h-full
+      w-full
+      scale-105
+      object-cover
+    "
+        onError={(event) => {
+          event.currentTarget.src = "/img/default/ongs.png";
+        }}
+      />
 
-      <div
-        className="hero-dots"
-        data-hero-dots
-        role="tablist"
-        aria-label="Selecionar slide"
-      >
-        {slides.map((slide, index) => {
-          const ativo = index === slideAtual;
+      {/* Camada para melhorar a leitura */}
+      <div className="absolute inset-0 bg-base-200/1"></div>
 
-          return (
-            <button
-              key={slide.imagem}
-              className={`hero-dot ${ativo ? "is-active" : ""}`}
-              type="button"
-              role="tab"
-              aria-selected={ativo}
-              aria-label={`Ver slide ${index + 1}`}
-              onClick={() => mudarSlide(index)}
-            ></button>
-          );
-        })}
+      {/* CONTEÚDO */}
+      <div className="relative z-10 flex h-full w-full items-center px-8 md:px-14 lg:px-15">
+        {" "}
+        <div className="w-full max-w-xl rounded-3xl bg-base-200/95 p-8 shadow-xl md:p-10">
+          {/* Categorias */}
+          <div className="mb-6 flex flex-wrap items-center gap-2 text-sm font-bold uppercase tracking-wide text-primary">
+            <span>{slide.categoriaPrincipal}</span>
+
+            {slide.categorias?.map((categoria) => (
+              <div key={categoria} className="flex items-center gap-2">
+                <span>+</span>
+                <span>{categoria}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Nome */}
+          <h1 className="mb-6 text-4xl font-black leading-tight text-base-content md:text-5xl lg:text-6xl">
+            {slide.nome}
+          </h1>
+
+          {/* Descrição */}
+          <p className="mb-3 text-lg leading-relaxed text-base-content/70">
+            {slide.descricao}
+          </p>
+
+          {/* Localização */}
+          <p className="mb-8 flex items-center gap-2 text-sm text-base-content/60">
+            <i
+              className="fa-solid fa-location-dot text-primary"
+              aria-hidden="true"
+            ></i>
+
+            {slide.localizacao}
+          </p>
+
+          {/* Botão */}
+          <a
+            href={`/ongs/${slide.id}`}
+            className="btn btn-primary w-full max-w-sm rounded-full px-8 text-base font-bold"
+          >
+            Conhecer Causa
+            <i
+              className="fa-solid fa-arrow-right ml-auto"
+              aria-hidden="true"
+            ></i>
+          </a>
+        </div>
       </div>
 
-      <button
-        className="hero-arrow hero-arrow--next"
-        type="button"
-        aria-label="Próximo slide"
-        onClick={() => mudarSlide(slideAtual + 1)}
+      {/* CONTROLE DO CARROSSEL */}
+      <div
+        className="
+      absolute
+      bottom-8
+      left-1/2
+      z-20
+      flex
+      -translate-x-1/2
+      items-center
+      gap-3
+      rounded-full
+      bg-base-100/95
+      px-4
+      py-2
+      shadow-xl
+    "
       >
-        <i
-          className="fa-solid fa-chevron-right"
-          aria-hidden="true"
-        ></i>
-      </button>
-    </div>
-  </div>
-</section>
+        <button
+          type="button"
+          className="btn btn-circle btn-ghost btn-sm text-primary"
+          onClick={() => mudarSlide(slideAtual - 1)}
+          aria-label="ONG anterior"
+        >
+          <i className="fa-solid fa-chevron-left"></i>
+        </button>
 
-);
+        <div className="flex items-center gap-3">
+          {slides.map((item, index) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => mudarSlide(index)}
+              aria-label={`Ver ${item.nome}`}
+              className={`
+            h-2.5 w-2.5 rounded-full
+            transition-all duration-300
+            ${
+              index === slideAtual
+                ? "scale-110 bg-primary"
+                : "bg-primary/20 hover:bg-primary/40"
+            }
+          `}
+            ></button>
+          ))}
+        </div>
+
+        <button
+          type="button"
+          className="btn btn-circle btn-ghost btn-sm text-primary"
+          onClick={() => mudarSlide(slideAtual + 1)}
+          aria-label="Próxima ONG"
+        >
+          <i className="fa-solid fa-chevron-right"></i>
+        </button>
+      </div>
+    </section>
+  );
 }
 
 export default Hero;
