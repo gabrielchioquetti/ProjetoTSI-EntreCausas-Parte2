@@ -31,3 +31,6 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# Pasta de uploads de imagens locais
+uploads/

@@ -1,0 +1,5 @@
+# Arquivos enviados durante a execução
+uploads/
+
+# Configurações locais do VS Code
+.vscode/
