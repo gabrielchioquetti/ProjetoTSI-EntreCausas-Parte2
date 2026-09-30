@@ -5,9 +5,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
-import java.util.List;
 
 @Entity
 @Table(name = "funcao")
@@ -16,55 +14,42 @@ public class Funcao {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id_funcao")
-    private Integer idFuncao;
+    private Long idFuncao;
 
-    @Column(name = "nome_cargo")
-    private String nomeCargo;
+    // Nome da função/perfil do usuário.
+    // Exemplos: "USUARIO" e "ADMINISTRADOR".
+    // A função não deve ser duplicada no banco.
+    @Column(name = "nome", nullable = false, unique = true, length = 50)
+    private String nome;
 
-    @Column(name = "descricao")
-    private String descricao;
-
-    @OneToMany(mappedBy = "funcao")
-    private List<Usuario> usuarios;
-
-    public Funcao(){
-
+    // Construtor padrão exigido pelo JPA.
+    public Funcao() {
     }
 
-    public Funcao(String nomeCargo, String descricao){
-        this.nomeCargo = nomeCargo;
-        this.descricao = descricao;
+    // Construtor completo.
+    public Funcao(Long idFuncao, String nome) {
+        this.idFuncao = idFuncao;
+        this.nome = nome;
     }
 
-    public Integer getIdFuncao() {
+    // Construtor utilizado quando ainda não existe um ID.
+    public Funcao(String nome) {
+        this.nome = nome;
+    }
+
+    public Long getIdFuncao() {
         return idFuncao;
     }
 
-    public void setIdFuncao(Integer idFuncao) {
+    public void setIdFuncao(Long idFuncao) {
         this.idFuncao = idFuncao;
     }
-    
-    public String getNomeCargo() {
-        return nomeCargo;
+
+    public String getNome() {
+        return nome;
     }
 
-    public void setNomeCargo(String nomeCargo) {
-        this.nomeCargo = nomeCargo;
-    }
-
-    public String getDescricao() {
-        return descricao;
-    }
-
-    public void setDescricao(String descricao) {
-        this.descricao = descricao;
-    }
-
-    public List<Usuario> getUsuarios() {
-        return usuarios;
-    }
-
-    public void setUsuarios(List<Usuario> usuarios) {
-        this.usuarios = usuarios;
+    public void setNome(String nome) {
+        this.nome = nome;
     }
 }

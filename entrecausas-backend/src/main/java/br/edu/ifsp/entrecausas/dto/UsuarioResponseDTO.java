@@ -1,30 +1,11 @@
 package br.edu.ifsp.entrecausas.dto;
 
-import br.edu.ifsp.entrecausas.entity.Usuario;
-import java.time.LocalDate;
-
+// Java Record imutável utilizado como DTO de saída para respostas da API REST
 public record UsuarioResponseDTO(
-    Integer idUsuario,
-    String nome,
-    String telefone,
-    String celular,
-    String email,
-    String cpf,
-    LocalDate dataCadastro,
-    Integer idFuncao,
-    String nomeCargo
-) {
-    public UsuarioResponseDTO(Usuario usuario) {
-        this(
-            usuario.getIdUsuario(),
-            usuario.getNome(),
-            usuario.getTelefone(),
-            usuario.getCelular(),
-            usuario.getEmail(),
-            usuario.getCpf(),
-            usuario.getDataCadastro(),
-            usuario.getFuncao() != null ? usuario.getFuncao().getIdFuncao() : null,
-            usuario.getFuncao() != null ? usuario.getFuncao().getNomeCargo() : null
-        );
-    }
-}
+    Long idUsuario,     // Identificador único do usuário cadastrado
+    String nome,        // Nome completo do usuário
+    String email,       // Endereço de e-mail do usuário
+    String fotoPerfil,  // Nome/caminho relativo da foto de perfil armazenada no diretório de uploads
+    String fotoAlt,     // Texto alternativo descritivo da imagem para fins de acessibilidade (Alt Text)
+    String funcaoNome   // Nome amigável do perfil/função de acesso do usuário (ex: "ADMINISTRADOR", "Usuario")
+) {}

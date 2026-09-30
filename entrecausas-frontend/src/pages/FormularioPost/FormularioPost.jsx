@@ -27,23 +27,8 @@ function FormularioPostPage() {
     return () => clearInterval(intervalo);
   }, []);
 
-  async function publicarPost(dados) {
-    try {
-      const res = await fetch("http://localhost:8080/postagens/solicitar", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(dados),
-      });
-
-      if (res.ok) {
-        alert("Publicação enviada para análise e e-mail disparado com sucesso!");
-      } else {
-        alert("Erro ao enviar a publicação. Verifique os dados fornecidos.");
-      }
-    } catch (error) {
-      console.error("Erro na comunicação com o servidor:", error);
-      alert("Erro ao conectar com o servidor.");
-    }
+  function publicarPost(dados) {
+    console.log("Dados enviados:", dados);
   }
 
   function cancelarPost() {
@@ -80,7 +65,10 @@ function FormularioPostPage() {
           id="conteudo-principal"
           className="relative overflow-hidden py-16 lg:py-20"
         >
+          {/* ======================================== */}
           {/* CARROSSEL DE FUNDO */}
+          {/* ======================================== */}
+
           <div className="absolute inset-0">
             {imagens.map((imagem, indice) => (
               <img
@@ -106,7 +94,10 @@ function FormularioPostPage() {
           {/* Overlay escuro */}
           <div className="absolute inset-0 bg-black/65"></div>
 
+          {/* ======================================== */}
           {/* CONTEÚDO */}
+          {/* ======================================== */}
+
           <div className="relative z-10 mx-auto w-full max-w-7xl px-6 lg:px-10">
             {/* CABEÇALHO */}
             <div className="mb-10 max-w-3xl">

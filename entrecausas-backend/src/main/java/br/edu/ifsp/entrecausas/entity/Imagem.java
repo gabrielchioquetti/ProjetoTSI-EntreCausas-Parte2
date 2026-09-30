@@ -2,6 +2,7 @@ package br.edu.ifsp.entrecausas.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -12,72 +13,83 @@ import jakarta.persistence.Table;
 @Entity
 @Table(name = "imagem")
 public class Imagem {
-    
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id_imagem")
-    private Integer idImagem;
+    private Long idImagem;
 
-    @ManyToOne
-    @JoinColumn(name = "id_postagem")
-    private Postagem postagem;
-
-    @Column(name = "nome")
-    private String nome;
-
-    @Column(name = "caminho")
+    // Caminho do arquivo da imagem.
+    @Column(
+        name = "caminho",
+        nullable = false,
+        length = 255
+    )
     private String caminho;
 
-    @Column(name = "descricao")
-    private String descricao;
+    // Texto alternativo da imagem.
+    @Column(
+        name = "texto_alternativo",
+        length = 255
+    )
+    private String textoAlternativo;
 
-    @Column(name = "ordem")
-    private int ordem;
+    // ONG proprietária da imagem.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(
+        name = "id_ong",
+        nullable = false
+    )
+    private Ong ong;
 
-    public Imagem(){}
-
-    public Imagem(Postagem postagem, String nome, String caminho, String descricao, int ordem){
-        this.postagem = postagem;
-        this.nome = nome;
-        this.caminho = caminho;
-        this.descricao = descricao;
-        this.ordem = ordem;
+    // Construtor padrão exigido pelo JPA.
+    public Imagem() {
     }
 
-    public Integer getIdImagem() {
+    // Construtor completo.
+    public Imagem(
+            Long idImagem,
+            String caminho,
+            String textoAlternativo,
+            Ong ong) {
+
+        this.idImagem = idImagem;
+        this.caminho = caminho;
+        this.textoAlternativo = textoAlternativo;
+        this.ong = ong;
+    }
+
+    public Long getIdImagem() {
         return idImagem;
     }
-    public void setIdImagem(Integer idImagem) {
+
+    public void setIdImagem(Long idImagem) {
         this.idImagem = idImagem;
     }
-    public Postagem getPostagem() {
-        return postagem;
-    }
-    public void setPostagem(Postagem postagem) {
-        this.postagem = postagem;
-    }
-    public String getNome() {
-        return nome;
-    }
-    public void setNome(String nome) {
-        this.nome = nome;
-    }
+
     public String getCaminho() {
         return caminho;
     }
+
     public void setCaminho(String caminho) {
         this.caminho = caminho;
     }
-    public String getDescricao() {
-        return descricao;
+
+    public String getTextoAlternativo() {
+        return textoAlternativo;
     }
-    public void setDescricao(String descricao) {
-        this.descricao = descricao;
+
+    public void setTextoAlternativo(
+            String textoAlternativo) {
+
+        this.textoAlternativo = textoAlternativo;
     }
-    public int getOrdem() {
-        return ordem;
+
+    public Ong getOng() {
+        return ong;
     }
-    public void setOrdem(int ordem) {
-        this.ordem = ordem;
+
+    public void setOng(Ong ong) {
+        this.ong = ong;
     }
 }
