@@ -1,16 +1,19 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import OngCard from "./OngCard";
 
 import listaOngs from "../../data/ongs";
 
-function Ongs() {
+function OngsFeed() {
   // =========================================================
   // ESTADOS
   // =========================================================
 
   const [termoBusca, setTermoBusca] = useState("");
   const [categoriaSelecionada, setCategoriaSelecionada] = useState("");
+  const [quantidadeVisivel, setQuantidadeVisivel] = useState(6);
+
+  const observadorRef = useRef(null);
 
   // =========================================================
   // CATEGORIAS DISPONÍVEIS
@@ -66,12 +69,111 @@ function Ongs() {
   }, [termoBusca, categoriaSelecionada]);
 
   // =========================================================
+  // VERIFICA SE EXISTE FILTRO ATIVO
+  // =========================================================
+
+  const filtroAtivo = termoBusca.trim() !== "" || categoriaSelecionada !== "";
+
+  // =========================================================
+  // ONGS VISÍVEIS
+  // =========================================================
+
+  const ongsVisiveis = useMemo(() => {
+    if (ongsFiltradas.length === 0) {
+      return [];
+    }
+
+    // =====================================================
+    // SE ESTIVER PESQUISANDO OU FILTRANDO
+    // MOSTRA SOMENTE OS RESULTADOS REAIS
+    // =====================================================
+
+    if (filtroAtivo) {
+      return ongsFiltradas;
+    }
+
+    // =====================================================
+    // SEM FILTRO, MANTÉM O FEED INFINITO
+    // =====================================================
+
+    return Array.from(
+      { length: quantidadeVisivel },
+      (_, index) => ongsFiltradas[index % ongsFiltradas.length],
+    );
+  }, [ongsFiltradas, quantidadeVisivel, filtroAtivo]);
+
+  // =========================================================
+  // SCROLL INFINITO
+  // =========================================================
+
+  useEffect(() => {
+    // =====================================================
+    // SE EXISTIR FILTRO OU PESQUISA,
+    // NÃO ATIVA O SCROLL INFINITO
+    // =====================================================
+
+    if (filtroAtivo) {
+      return;
+    }
+
+    const elemento = observadorRef.current;
+
+    if (!elemento) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+
+        if (entry.isIntersecting) {
+          setQuantidadeVisivel((quantidadeAtual) => quantidadeAtual + 6);
+        }
+      },
+      {
+        root: null,
+        rootMargin: "200px",
+        threshold: 0,
+      },
+    );
+
+    observer.observe(elemento);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [filtroAtivo]);
+
+  // =========================================================
+  // ALTERAR PESQUISA
+  // =========================================================
+
+  function alterarPesquisa(event) {
+    setTermoBusca(event.target.value);
+
+    // Reinicia o feed
+    setQuantidadeVisivel(6);
+  }
+
+  // =========================================================
+  // ALTERAR CATEGORIA
+  // =========================================================
+
+  function alterarCategoria(event) {
+    setCategoriaSelecionada(event.target.value);
+
+    // Reinicia o feed
+    setQuantidadeVisivel(6);
+  }
+
+  // =========================================================
   // LIMPAR FILTROS
   // =========================================================
 
   function limparFiltros() {
     setTermoBusca("");
     setCategoriaSelecionada("");
+    setQuantidadeVisivel(6);
   }
 
   return (
@@ -114,7 +216,7 @@ function Ongs() {
 
             <select
               value={categoriaSelecionada}
-              onChange={(event) => setCategoriaSelecionada(event.target.value)}
+              onChange={alterarCategoria}
               className="select select-bordered w-full rounded-full bg-base-100 sm:w-56"
               aria-label="Filtrar ONGs por categoria"
             >
@@ -147,7 +249,7 @@ function Ongs() {
                   id="pesquisa-ong"
                   type="search"
                   value={termoBusca}
-                  onChange={(event) => setTermoBusca(event.target.value)}
+                  onChange={alterarPesquisa}
                   placeholder="Pesquisar ONG"
                   className="grow"
                 />
@@ -199,7 +301,13 @@ function Ongs() {
           "
         >
           {ongsFiltradas.length > 0 ? (
-            ongsFiltradas.map((ong) => <OngCard key={ong.id} ong={ong} />)
+            /* =================================================
+                ONGS ENCONTRADAS
+            ================================================= */
+
+            ongsVisiveis.map((ong, index) => (
+              <OngCard key={`${ong.id}-${index}`} ong={ong} />
+            ))
           ) : (
             /* =================================================
                 ESTADO VAZIO
@@ -229,9 +337,29 @@ function Ongs() {
             </div>
           )}
         </div>
+
+        {/* =====================================================
+            DETECTOR DO SCROLL INFINITO
+
+            SÓ APARECE QUANDO NÃO EXISTE FILTRO
+            OU PESQUISA ATIVA
+        ===================================================== */}
+
+        {!filtroAtivo && ongsFiltradas.length > 0 && (
+          <div
+            ref={observadorRef}
+            className="flex justify-center py-10"
+            aria-live="polite"
+          >
+            <span
+              className="loading loading-spinner loading-md"
+              aria-label="Carregando mais ONGs"
+            ></span>
+          </div>
+        )}
       </div>
     </section>
   );
 }
 
-export default Ongs;
+export default OngsFeed;

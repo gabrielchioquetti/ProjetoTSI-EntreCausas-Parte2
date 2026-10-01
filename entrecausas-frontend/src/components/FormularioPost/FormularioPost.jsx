@@ -17,21 +17,6 @@ function FormularioPost({ onSubmit, onCancel }) {
     label: ong.nome,
   }));
 
-  const status = [
-    {
-      value: "pendente",
-      label: "Pendente de aprovação",
-    },
-    {
-      value: "rascunho",
-      label: "Rascunho",
-    },
-    {
-      value: "publicado",
-      label: "Publicado",
-    },
-  ];
-
   function enviarFormulario(event) {
     event.preventDefault();
 
@@ -43,7 +28,7 @@ function FormularioPost({ onSubmit, onCancel }) {
       organizacao: formData.get("organizacao"),
       descricao: formData.get("descricao"),
       imagem: formData.get("imagem"),
-      status: formData.get("status"),
+
       email: formData.get("email"),
     };
 
@@ -59,31 +44,31 @@ function FormularioPost({ onSubmit, onCancel }) {
     <form
       onSubmit={enviarFormulario}
       className="
-              rounded-3xl
-              border
-              border-base-300
-              bg-base-100
-              p-7
-              shadow-sm
-              md:p-9
-            "
+                rounded-3xl
+                border
+                border-base-300
+                bg-base-100
+                p-7
+                shadow-sm
+                md:p-9
+              "
     >
       {/* TÍTULO DO CARD */}
 
       <div className="mb-9 flex items-center gap-4">
         <div
           className="
-                  flex
-                  h-14
-                  w-14
-                  shrink-0
-                  items-center
-                  justify-center
-                  rounded-2xl
-                  bg-secondary
-                  text-2xl
-                  text-primary
-                "
+                    flex
+                    h-14
+                    w-14
+                    shrink-0
+                    items-center
+                    justify-center
+                    rounded-2xl
+                    bg-secondary
+                    text-2xl
+                    text-primary
+                  "
         >
           <i className="fa-solid fa-pen-to-square" aria-hidden="true"></i>
         </div>
@@ -164,14 +149,6 @@ function FormularioPost({ onSubmit, onCancel }) {
 
         {/* DIREITA */}
         <div className="space-y-6">
-          <SelectFormulario
-            label="Status da publicação"
-            id="status"
-            placeholder="Selecione o status"
-            options={status}
-            required
-          />
-
           <CampoFormulario
             label="E-mail para contato"
             id="email"
@@ -195,29 +172,29 @@ function FormularioPost({ onSubmit, onCancel }) {
 
       <div
         className="
-                flex
-                flex-col-reverse
-                gap-3
-                sm:flex-row
-                sm:items-center
-                sm:justify-between
-              "
+                  flex
+                  flex-col-reverse
+                  gap-3
+                  sm:flex-row
+                  sm:items-center
+                  sm:justify-between
+                "
       >
         <button
           type="button"
           onClick={onCancel}
           className="
-                  btn
-                  h-12
-                  rounded-xl
-                  border-base-300
-                  bg-base-100
-                  px-7
-                  font-bold
-                  hover:border-primary
-                  hover:bg-primary/5
-                  hover:text-primary
-                "
+                    btn
+                    h-12
+                    rounded-xl
+                    border-base-300
+                    bg-base-100
+                    px-7
+                    font-bold
+                    hover:border-primary
+                    hover:bg-primary/5
+                    hover:text-primary
+                  "
         >
           Cancelar
         </button>
@@ -225,13 +202,13 @@ function FormularioPost({ onSubmit, onCancel }) {
         <button
           type="submit"
           className="
-                  btn
-                  btn-primary
-                  h-12
-                  rounded-xl
-                  px-8
-                  font-bold
-                "
+                    btn
+                    btn-primary
+                    h-12
+                    rounded-xl
+                    px-8
+                    font-bold
+                  "
         >
           <i className="fa-regular fa-paper-plane" aria-hidden="true"></i>
           Publicar
