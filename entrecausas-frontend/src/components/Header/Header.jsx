@@ -1,58 +1,76 @@
+import { Link, NavLink } from "react-router";
+
 function Header() {
   const links = [
-    { nome: "Início", href: "#inicio" },
-    { nome: "Descobrir ONGs", href: "#descobrir" },
-    { nome: "Impacto", href: "#impacto" },
-    { nome: "Fale Conosco", href: "#contato" },
+    { nome: "Home", to: "/" },
+    { nome: "Descobrir ONGs", to: "/feed" },
+    { nome: "Impacto", to: "/impacto" },
+    { nome: "Fale Conosco", to: "/fale-conosco" },
   ];
 
   return (
-    <div className="sticky top-0 z-50 max-lg:collapse bg-base-100 shadow-sm w-full rounded-md px-6">
-      <input id="navbar-1-toggle" class="peer hidden" type="checkbox" />
+    <div className="sticky top-0 z-50 w-full rounded-md bg-base-100 px-6 shadow-sm max-lg:collapse">
+      <input id="navbar-1-toggle" className="peer hidden" type="checkbox" />
+
       <label
-        for="navbar-1-toggle"
-        class="fixed inset-0 hidden max-lg:peer-checked:block"
+        htmlFor="navbar-1-toggle"
+        className="fixed inset-0 hidden max-lg:peer-checked:block"
       ></label>
-      <div class="collapse-title navbar">
-        <div class="navbar-start">
-          <a
-            href="#cabecalho"
+
+      <div className="collapse-title navbar">
+        {/* LOGO */}
+
+        <div className="navbar-start">
+          <Link
+            to="/"
             className="
-          text-2xl
-          md:text-3xl
-          font-extrabold
-          text-primary
-          tracking-tight
-        "
+              text-2xl
+              font-extrabold
+              tracking-tight
+              text-primary
+              md:text-3xl
+            "
           >
-            {" "}
             EntreCausas
-          </a>
+          </Link>
         </div>
-        <div class="navbar-end hidden lg:flex">
-          <nav className="hidden md:flex items-center gap-10">
-            {links.map((link, index) => (
-              <a
+
+        {/* MENU */}
+
+        <div className="navbar-end hidden lg:flex">
+          <nav className="hidden items-center gap-10 md:flex">
+            {links.map((link) => (
+              <NavLink
                 key={link.nome}
-                href={link.href}
-                className={`
+                to={link.to}
+                end={link.to === "/"}
+                className={({ isActive }) => `
                   relative
+                  py-2
                   font-semibold
-                  text-base-content
                   transition-colors
                   duration-200
                   hover:text-primary
-                  py-2
 
                   ${
-                    index === 0
-                      ? "text-primary after:absolute after:left-0 after:-bottom-1 after:w-full after:h-[3px] after:bg-primary after:rounded-full"
-                      : ""
+                    isActive
+                      ? `
+                        text-primary
+
+                        after:absolute
+                        after:left-0
+                        after:-bottom-1
+                        after:h-[3px]
+                        after:w-full
+                        after:rounded-full
+                        after:bg-primary
+                      `
+                      : "text-base-content"
                   }
                 `}
               >
                 {link.nome}
-              </a>
+              </NavLink>
             ))}
           </nav>
         </div>
@@ -62,25 +80,3 @@ function Header() {
 }
 
 export default Header;
-
-/* 
-<header id="cabecalho" role="banner">
-        <a className="h2-logo" href="#cabecalho">EntreCausas</a>
-
-        <button id="menu-toggle" type="button" aria-expanded="false" aria-controls="nav-principal" aria-label="Abrir menu de navegacao">
-            <span></span>
-            <span></span>
-            <span></span>
-        </button>
-
-        <nav id="nav-principal" aria-label="Navegacao principal">
-            <ul id="ul-cabecalho">
-                <li><a className="a-cabecalho" href="#titulo-hero">Início</a></li>
-                <li><a className="a-cabecalho" href="#titulo-descobrir">Descobrir ONGs</a></li>
-                <li><a className="a-cabecalho" href="#titulo-impacto">Impacto</a></li>
-                <li><a className="a-cabecalho" href="#titulo-fale-conosco">Fale Conosco</a></li>
-            </ul>
-        </nav>
-    </header>
-
-*/
