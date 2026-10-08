@@ -8,6 +8,7 @@ import Detalhes from "./pages/Detalhes/detalhes";
 import Impacto from "./pages/Impacto/impacto";
 import Login from "./pages/Login/Login";
 import FormularioPost from "./pages/FormularioPost/FormularioPost";
+import FormularioOng from "./pages/FormularioOng/FormularioOng";
 import Feed from "./pages/DescobrirOngs/Feed";
 import CadastroUsuario from "./pages/CadastroUsuario/CadastroUsuario";
 
@@ -26,6 +27,8 @@ createRoot(document.getElementById("root")).render(
         <Route path="/feed" element={<Feed />} />
 
         <Route path="/formulario-post" element={<FormularioPost />} />
+
+        <Route path="/formulario-ong" element={<FormularioOng />} />
 
         <Route path="/Cadastro" element={<CadastroUsuario />} />
       </Routes>

@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 function UploadImagem({
   label,
@@ -7,19 +7,34 @@ function UploadImagem({
   erro = "",
   accept = "image/png, image/jpeg, image/webp",
   ajuda = "Formatos aceitos: JPG, PNG ou WEBP (máx. 5MB)",
+  multiple = false,
+  compact = false,
   onChange,
 }) {
   const inputRef = useRef(null);
-  const [nomeArquivo, setNomeArquivo] = useState("");
-  const [preview, setPreview] = useState("");
+  const previewUrls = useRef([]);
+  const [arquivos, setArquivos] = useState([]);
+
+  useEffect(
+    () => () => previewUrls.current.forEach((url) => URL.revokeObjectURL(url)),
+    [],
+  );
 
   function handleSelecionarArquivo(event) {
-    const arquivo = event.target.files?.[0];
+    previewUrls.current.forEach((url) => URL.revokeObjectURL(url));
+    const selecionados = Array.from(event.target.files || []);
+    const arquivosComPreview = selecionados.map((arquivo) => {
+      const preview = arquivo.type.startsWith("image/")
+        ? URL.createObjectURL(arquivo)
+        : "";
 
-    if (!arquivo) return;
+      if (preview) {
+        previewUrls.current.push(preview);
+      }
 
-    setNomeArquivo(arquivo.name);
-    setPreview(URL.createObjectURL(arquivo));
+      return { nome: arquivo.name, preview };
+    });
+    setArquivos(arquivosComPreview);
 
     if (onChange) {
       onChange(event);
@@ -51,6 +66,8 @@ function UploadImagem({
         name={id}
         type="file"
         accept={accept}
+        multiple={multiple}
+        aria-describedby={`${id}-ajuda${erro ? ` ${id}-erro` : ""}`}
         onChange={handleSelecionarArquivo}
         className="hidden"
       />
@@ -69,7 +86,7 @@ function UploadImagem({
           border-dashed
           bg-base-100
           px-6
-          py-8
+          ${compact ? "py-[15px]" : "py-8"}
           text-center
           transition
           hover:border-primary
@@ -78,36 +95,49 @@ function UploadImagem({
           ${erro ? "border-error" : "border-base-300"}
         `}
       >
-        {preview ? (
+        {arquivos.length > 0 ? (
           <div className="w-full">
-            <img
-              src={preview}
-              alt="Pré-visualização da imagem enviada"
-              className="mx-auto mb-4 h-36 w-full max-w-xs rounded-xl object-cover"
-            />
+            {arquivos.some((arquivo) => arquivo.preview) && (
+              <div
+                className={`${compact ? "mb-2" : "mb-4"} grid gap-3 ${
+                  multiple ? "grid-cols-2 sm:grid-cols-3" : "grid-cols-1"
+                }`}
+              >
+                {arquivos
+                  .filter((arquivo) => arquivo.preview)
+                  .map((arquivo, indice) => (
+                    <img
+                      key={`${arquivo.nome}-${indice}`}
+                      src={arquivo.preview}
+                      alt={`Pré-visualização de ${arquivo.nome}`}
+                      className={`w-full rounded-xl object-cover ${
+                        compact ? "h-[5.25rem]" : "h-36"
+                      }`}
+                    />
+                  ))}
+              </div>
+            )}
 
-            <p className="font-semibold text-base-content">{nomeArquivo}</p>
+            <p className="font-semibold text-base-content">
+              {arquivos.map((arquivo) => arquivo.nome).join(", ")}
+            </p>
 
             <p className="mt-1 text-sm text-base-content/55">
-              Clique para trocar a imagem
+              Clique para {multiple ? "trocar os arquivos" : "trocar a imagem"}
             </p>
           </div>
         ) : (
           <>
             <div
-              className="
-                mb-4
-                flex
-                h-16
-                w-16
-                items-center
-                justify-center
-                rounded-2xl
-                bg-secondary
-                text-primary
-              "
+              className={`mb-3 flex items-center justify-center rounded-2xl bg-secondary text-primary ${
+                compact ? "h-9 w-9" : "h-16 w-16"
+              }`}
             >
-              <i className="fa-regular fa-image text-2xl"></i>
+              <i
+                className={`fa-regular fa-image ${
+                  compact ? "text-base" : "text-2xl"
+                }`}
+              ></i>
             </div>
 
             <p className="font-semibold text-base-content">
@@ -118,12 +148,26 @@ function UploadImagem({
               ou arraste e solte aqui
             </p>
 
-            <p className="mt-3 text-xs text-base-content/45">{ajuda}</p>
+            <p
+              id={`${id}-ajuda`}
+              className="mt-3 text-xs text-base-content/45"
+            >
+              {ajuda}
+            </p>
           </>
         )}
       </button>
 
-      {erro && <p className="mt-2 text-sm text-error">{erro}</p>}
+      {arquivos.length > 0 && (
+        <p id={`${id}-ajuda`} className="sr-only">
+          {ajuda}
+        </p>
+      )}
+      {erro && (
+        <p id={`${id}-erro`} className="mt-2 text-sm text-error" role="alert">
+          {erro}
+        </p>
+      )}
     </div>
   );
 }

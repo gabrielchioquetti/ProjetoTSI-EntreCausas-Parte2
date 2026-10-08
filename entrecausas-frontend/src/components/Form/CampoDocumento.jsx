@@ -47,6 +47,10 @@ function CampoDocumento({ tipo = "cpf", required = false, erro = "" }) {
         type="text"
         placeholder={placeholder}
         autoComplete="off"
+        pattern={
+          tipo === "cnpj" ? "\\d{2}\\.\\d{3}\\.\\d{3}/\\d{4}-\\d{2}" : undefined
+        }
+        title={tipo === "cnpj" ? "Informe um CNPJ completo." : undefined}
         required={required}
         onInput={formatarDocumento}
         maxLength={tipo === "cpf" ? 14 : 18}
