@@ -8,39 +8,36 @@ function UploadImagem({
   required = false,
   erro = "",
   accept = "image/png, image/jpeg, image/webp",
-  ajuda = "Formatos aceitos: JPG, PNG ou WEBP (máx. 5MB cada)",
+  ajuda = "Formatos aceitos: JPG, PNG ou WEBP (máx. 5MB)",
+  compact = false,
   onChange,
 }) {
   const inputRef = useRef(null);
+  const previewUrls = useRef([]);
   const [arquivos, setArquivos] = useState([]);
-  const [previews, setPreviews] = useState([]);
 
-  // 1. SINCRONIZA OS ARQUIVOS DO REACT COM O INPUT NATIVO HTML
-  useEffect(() => {
-    if (!inputRef.current) return;
-
-    const dataTransfer = new DataTransfer();
-    arquivos.forEach((file) => dataTransfer.items.add(file));
-    inputRef.current.files = dataTransfer.files;
-  }, [arquivos]);
+  useEffect(
+    () => () => previewUrls.current.forEach((url) => URL.revokeObjectURL(url)),
+    [],
+  );
 
   function handleSelecionarArquivo(event) {
-    const novoficheiros = Array.from(event.target.files || []);
+    previewUrls.current.forEach((url) => URL.revokeObjectURL(url));
+    previewUrls.current = [];
 
-    if (novoficheiros.length === 0) return;
+    const selecionados = Array.from(event.target.files || []);
+    const arquivosComPreview = selecionados.map((arquivo) => {
+      const preview = arquivo.type.startsWith("image/")
+        ? URL.createObjectURL(arquivo)
+        : "";
 
-    if (multiple) {
-      const listaAtualizada = [...arquivos, ...novoficheiros];
-      setArquivos(listaAtualizada);
+      if (preview) {
+        previewUrls.current.push(preview);
+      }
 
-      const novasPreviews = novoficheiros.map((file) => URL.createObjectURL(file));
-      setPreviews((prev) => [...prev, ...novasPreviews]);
-    } else {
-      if (previews[0]) URL.revokeObjectURL(previews[0]);
-
-      setArquivos([novoficheiros[0]]);
-      setPreviews([URL.createObjectURL(novoficheiros[0])]);
-    }
+      return { nome: arquivo.name, preview };
+    });
+    setArquivos(arquivosComPreview);
 
     if (onChange) {
       onChange(event);
@@ -50,14 +47,18 @@ function UploadImagem({
   function removerImagem(indexParaRemover, e) {
     e.stopPropagation();
 
-    // 2. LIBERA MEMÓRIA DA URL DE PREVIEW REMOVIDA
-    URL.revokeObjectURL(previews[indexParaRemover]);
+    const arquivoParaRemover = arquivos[indexParaRemover];
+    if (arquivoParaRemover?.preview) {
+      URL.revokeObjectURL(arquivoParaRemover.preview);
+      previewUrls.current = previewUrls.current.filter(
+        (url) => url !== arquivoParaRemover.preview,
+      );
+    }
 
-    const listaArquivosAtualizada = arquivos.filter((_, index) => index !== indexParaRemover);
-    const listaPreviewsAtualizada = previews.filter((_, index) => index !== indexParaRemover);
-
+    const listaArquivosAtualizada = arquivos.filter(
+      (_, index) => index !== indexParaRemover,
+    );
     setArquivos(listaArquivosAtualizada);
-    setPreviews(listaPreviewsAtualizada);
   }
 
   function abrirSeletor() {
@@ -66,7 +67,10 @@ function UploadImagem({
 
   return (
     <div className="w-full">
-      <label htmlFor={id} className="mb-2 block text-sm font-bold text-base-content">
+      <label
+        htmlFor={id}
+        className="mb-2 block text-sm font-bold text-base-content"
+      >
         {label}
         {required && (
           <span className="ml-1 text-primary" aria-hidden="true">
@@ -82,68 +86,116 @@ function UploadImagem({
         type="file"
         multiple={multiple}
         accept={accept}
+        aria-describedby={`${id}-ajuda${erro ? ` ${id}-erro` : ""}`}
         onChange={handleSelecionarArquivo}
         className="hidden"
       />
 
       <div
         onClick={abrirSeletor}
-        className={`flex w-full cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed bg-base-100 p-6 text-center transition hover:border-primary hover:bg-base-200/40 ${
-          erro ? "border-error" : "border-base-300"
-        }`}
+        className={`
+          flex
+          w-full
+          flex-col
+          items-center
+          justify-center
+          rounded-2xl
+          border
+          border-dashed
+          bg-base-100
+          px-6
+          ${compact ? "py-[15px]" : "py-8"}
+          text-center
+          transition
+          hover:border-primary
+          hover:bg-base-200/40
+          ${erro ? "border-error" : "border-base-300"}
+        `}
       >
-        {previews.length > 0 ? (
+        {arquivos.length > 0 ? (
           <div className="w-full">
-            <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-              {previews.map((src, index) => (
-                <div
-                  key={index}
-                  className="relative group h-28 w-full overflow-hidden rounded-xl border border-base-300"
-                >
-                  <img
-                    src={src}
-                    alt={`Preview ${index + 1}`}
-                    className="h-full w-full object-cover"
-                  />
-                  <button
-                    type="button"
-                    onClick={(e) => removerImagem(index, e)}
-                    className="absolute top-1 right-1 flex h-6 w-6 items-center justify-center rounded-full bg-error text-xs font-bold text-white shadow-md hover:bg-error/80"
-                    title="Remover imagem"
-                  >
-                    ✕
-                  </button>
-                </div>
-              ))}
-            </div>
+            {arquivos.some((arquivo) => arquivo.preview) && (
+              <div
+                className={`${compact ? "mb-2" : "mb-4"} grid gap-3 ${
+                  multiple ? "grid-cols-2 sm:grid-cols-3" : "grid-cols-1"
+                }`}
+              >
+                {arquivos
+                  .filter((arquivo) => arquivo.preview)
+                  .map((arquivo, indice) => (
+                    <div
+                      key={`${arquivo.nome}-${indice}`}
+                      className="relative group"
+                    >
+                      <img
+                        src={arquivo.preview}
+                        alt={`Pré-visualização de ${arquivo.nome}`}
+                        className={`w-full rounded-xl object-cover ${
+                          compact ? "h-[5.25rem]" : "h-36"
+                        }`}
+                      />
+                      <button
+                        type="button"
+                        onClick={(e) => removerImagem(indice, e)}
+                        className="absolute top-2 right-2 rounded-full bg-error/90 p-1.5 text-white transition hover:bg-error"
+                        title="Remover imagem"
+                      >
+                        <i className="fa-solid fa-xmark block text-xs"></i>
+                      </button>
+                    </div>
+                  ))}
+              </div>
+            )}
 
             <p className="font-semibold text-base-content">
-              {arquivos.length}{" "}
-              {arquivos.length === 1 ? "imagem selecionada" : "imagens selecionadas"}
+              {arquivos.map((arquivo) => arquivo.nome).join(", ")}
             </p>
 
-            <p className="mt-1 text-xs text-base-content/55">
-              Clique para adicionar mais fotos
+            <p className="mt-1 text-sm text-base-content/55">
+              Clique para {multiple ? "trocar os arquivos" : "trocar a imagem"}
             </p>
           </div>
         ) : (
           <>
-            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-secondary text-primary">
-              <i className="fa-regular fa-image text-2xl"></i>
+            <div
+              className={`mb-3 flex items-center justify-center rounded-2xl bg-secondary text-primary ${
+                compact ? "h-9 w-9" : "h-16 w-16"
+              }`}
+            >
+              <i
+                className={`fa-regular fa-image ${
+                  compact ? "text-base" : "text-2xl"
+                }`}
+              ></i>
             </div>
 
             <p className="font-semibold text-base-content">
-              {multiple ? "Clique para enviar imagens" : "Clique para enviar uma imagem"}
+              {multiple
+                ? "Clique para enviar imagens"
+                : "Clique para enviar uma imagem"}
             </p>
 
-            <p className="text-sm text-base-content/55">ou arraste e solte aqui</p>
+            <p className="text-sm text-base-content/55">
+              ou arraste e solte aqui
+            </p>
 
-            <p className="mt-3 text-xs text-base-content/45">{ajuda}</p>
+            <p id={`${id}-ajuda`} className="mt-3 text-xs text-base-content/45">
+              {ajuda}
+            </p>
           </>
         )}
       </div>
 
-      {erro && <p className="mt-2 text-sm text-error">{erro}</p>}
+      {arquivos.length > 0 && (
+        <p id={`${id}-ajuda`} className="sr-only">
+          {ajuda}
+        </p>
+      )}
+      {erro && (
+        <p id={`${id}-erro`} className="mt-2 text-sm text-error" role="alert">
+          {erro}
+        </p>
+      )}
     </div>
   );
 }

@@ -8,6 +8,7 @@ function CampoFormulario({
   textarea = false,
   value = "",
   onChange,
+  textareaClassName = "",
   ...props
 }) {
   return (
@@ -49,6 +50,7 @@ function CampoFormulario({
             focus:ring-2
             focus:ring-primary/20
             ${erro ? "border-error" : "border-base-300"}
+            ${textareaClassName}
           `}
           {...props}
         />

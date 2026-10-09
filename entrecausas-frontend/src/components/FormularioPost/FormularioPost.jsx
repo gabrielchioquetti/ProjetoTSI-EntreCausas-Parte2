@@ -12,11 +12,6 @@ function FormularioPost({ onSubmit, onCancel }) {
     label: categoria,
   }));
 
-  const organizacoes = listaOngs.map((ong) => ({
-    value: ong.id,
-    label: ong.nome,
-  }));
-
   function enviarFormulario(event) {
     event.preventDefault();
 
@@ -25,7 +20,6 @@ function FormularioPost({ onSubmit, onCancel }) {
     const dados = {
       titulo: formData.get("titulo"),
       categoria: formData.get("categoria"),
-      organizacao: formData.get("organizacao"),
       descricao: formData.get("descricao"),
       imagem: formData.get("imagem"),
 
@@ -107,20 +101,6 @@ function FormularioPost({ onSubmit, onCancel }) {
       </div>
 
       {/* ================================================= */}
-      {/* ORGANIZAÇÃO */}
-      {/* ================================================= */}
-
-      <div className="mt-6">
-        <SelectFormulario
-          label="Organização"
-          id="organizacao"
-          placeholder="Selecione a organização responsável"
-          options={organizacoes}
-          required
-        />
-      </div>
-
-      {/* ================================================= */}
       {/* DESCRIÇÃO */}
       {/* ================================================= */}
 
@@ -153,7 +133,7 @@ function FormularioPost({ onSubmit, onCancel }) {
             label="E-mail para contato"
             id="email"
             type="email"
-            placeholder="exemplo@organizacao.org.br"
+            placeholder="contato@exemplo.com"
             autoComplete="email"
             required
           />
