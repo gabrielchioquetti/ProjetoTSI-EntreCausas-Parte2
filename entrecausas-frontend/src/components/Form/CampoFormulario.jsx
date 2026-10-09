@@ -6,6 +6,8 @@ function CampoFormulario({
   required = false,
   erro = "",
   textarea = false,
+  value = "",
+  onChange,
   ...props
 }) {
   return (
@@ -17,7 +19,10 @@ function CampoFormulario({
         {label}
 
         {required && (
-          <span className="ml-1 text-primary" aria-hidden="true">
+          <span
+            className="ml-1 text-primary"
+            aria-hidden="true"
+          >
             *
           </span>
         )}
@@ -29,6 +34,8 @@ function CampoFormulario({
           name={id}
           placeholder={placeholder}
           required={required}
+          value={value}
+          onChange={onChange}
           className={`
             textarea
             min-h-32
@@ -52,6 +59,8 @@ function CampoFormulario({
           type={type}
           placeholder={placeholder}
           required={required}
+          value={value}
+          onChange={onChange}
           className={`
             input
             h-12
@@ -70,7 +79,11 @@ function CampoFormulario({
         />
       )}
 
-      {erro && <p className="mt-2 text-sm text-error">{erro}</p>}
+      {erro && (
+        <p className="mt-2 text-sm text-error">
+          {erro}
+        </p>
+      )}
     </div>
   );
 }

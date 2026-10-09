@@ -1,4 +1,10 @@
-function CampoDocumento({ tipo = "cpf", required = false, erro = "" }) {
+function CampoDocumento({
+  tipo = "cpf",
+  required = false,
+  erro = "",
+  value = "",
+  onChange,
+}) {
   function formatarDocumento(event) {
     let valor = event.target.value.replace(/\D/g, "");
 
@@ -19,12 +25,23 @@ function CampoDocumento({ tipo = "cpf", required = false, erro = "" }) {
       valor = valor.replace(/(\d{4})(\d)/, "$1-$2");
     }
 
-    event.target.value = valor;
+    // Atualiza o valor exibido pelo campo.
+    if (onChange) {
+      onChange({
+        target: {
+          id: tipo,
+          value: valor,
+        },
+      });
+    }
   }
 
   const nomeCampo = tipo === "cpf" ? "CPF" : "CNPJ";
 
-  const placeholder = tipo === "cpf" ? "000.000.000-00" : "00.000.000/0000-00";
+  const placeholder =
+    tipo === "cpf"
+      ? "000.000.000-00"
+      : "00.000.000/0000-00";
 
   return (
     <div className="w-full">
@@ -35,7 +52,10 @@ function CampoDocumento({ tipo = "cpf", required = false, erro = "" }) {
         {nomeCampo}
 
         {required && (
-          <span className="ml-1 text-primary" aria-hidden="true">
+          <span
+            className="ml-1 text-primary"
+            aria-hidden="true"
+          >
             *
           </span>
         )}
@@ -48,7 +68,8 @@ function CampoDocumento({ tipo = "cpf", required = false, erro = "" }) {
         placeholder={placeholder}
         autoComplete="off"
         required={required}
-        onInput={formatarDocumento}
+        value={value}
+        onChange={formatarDocumento}
         maxLength={tipo === "cpf" ? 14 : 18}
         className={`
           input
@@ -66,7 +87,11 @@ function CampoDocumento({ tipo = "cpf", required = false, erro = "" }) {
         `}
       />
 
-      {erro && <p className="mt-2 text-sm text-error">{erro}</p>}
+      {erro && (
+        <p className="mt-2 text-sm text-error">
+          {erro}
+        </p>
+      )}
     </div>
   );
 }

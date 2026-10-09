@@ -1,18 +1,36 @@
-function CampoTelefone({ required = false, erro = "" }) {
+function CampoTelefone({
+  required = false,
+  erro = "",
+  value = "",
+  onChange,
+}) {
   function formatarTelefone(event) {
     let valor = event.target.value.replace(/\D/g, "");
 
+    // Limita o telefone a 11 dígitos.
     valor = valor.slice(0, 11);
 
     if (valor.length > 2) {
       valor = `(${valor.slice(0, 2)}) ${valor.slice(2)}`;
     }
 
-    if (valor.length > 10) {
+    // Formata celulares com 9 dígitos.
+    if (valor.replace(/\D/g, "").length > 10) {
       valor = valor.replace(/(\d{5})(\d)/, "$1-$2");
+    } else if (valor.replace(/\D/g, "").length > 6) {
+      // Formata telefones fixos com 8 dígitos.
+      valor = valor.replace(/(\d{4})(\d)/, "$1-$2");
     }
 
-    event.target.value = valor;
+    // Atualiza o valor exibido pelo campo.
+    if (onChange) {
+      onChange({
+        target: {
+          id: "telefone",
+          value: valor,
+        },
+      });
+    }
   }
 
   return (
@@ -23,7 +41,10 @@ function CampoTelefone({ required = false, erro = "" }) {
       >
         Telefone
         {required && (
-          <span className="ml-1 text-primary" aria-hidden="true">
+          <span
+            className="ml-1 text-primary"
+            aria-hidden="true"
+          >
             *
           </span>
         )}
@@ -36,7 +57,8 @@ function CampoTelefone({ required = false, erro = "" }) {
         placeholder="(11) 99999-9999"
         autoComplete="tel"
         required={required}
-        onInput={formatarTelefone}
+        value={value}
+        onChange={formatarTelefone}
         maxLength={15}
         className={`
           input
@@ -54,7 +76,11 @@ function CampoTelefone({ required = false, erro = "" }) {
         `}
       />
 
-      {erro && <p className="mt-2 text-sm text-error">{erro}</p>}
+      {erro && (
+        <p className="mt-2 text-sm text-error">
+          {erro}
+        </p>
+      )}
     </div>
   );
 }

@@ -3,6 +3,7 @@ import CampoFormulario from "../../components/Form/CampoFormulario";
 import Header from "../../components/Header/Header";
 import OngsCarrosel from "../../components/Ongs/OngsCarrossel";
 import Footer from "../../components/Footer/Footer";
+import { apiFetch } from "../../services/Api.js";
 
 const imagens = [
   "../../img/carrossel/instituto-nosso-lar/fotografia-Instituto-Nosso-Lar-Horizontal-Desktop.jpg",
@@ -13,6 +14,14 @@ const imagens = [
 function Login() {
   const [imagemAtual, setImagemAtual] = useState(0);
 
+  // Estados dos campos e das mensagens do formulário.
+  const [email, setEmail] = useState("");
+  const [senha, setSenha] = useState("");
+  const [erro, setErro] = useState("");
+  const [sucesso, setSucesso] = useState("");
+  const [carregando, setCarregando] = useState(false);
+
+  // Controla a troca automática das imagens.
   useEffect(() => {
     const intervalo = setInterval(() => {
       setImagemAtual((imagemAnterior) =>
@@ -23,9 +32,42 @@ function Login() {
     return () => clearInterval(intervalo);
   }, []);
 
+  // Envia as credenciais para o backend.
+  async function handleLogin(event) {
+    event.preventDefault();
+
+    setErro("");
+    setSucesso("");
+    setCarregando(true);
+
+    try {
+      const usuario = await apiFetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: email.trim(),
+          senha,
+        }),
+      });
+
+      // Confirma o login sem expor informações sensíveis.
+      setSucesso(`Login realizado com sucesso. Bem-vindo, ${usuario.nome}!`);
+
+      // Limpa a senha após o login.
+      setSenha("");
+    } catch (error) {
+      setErro(error.message || "Não foi possível realizar o login.");
+    } finally {
+      setCarregando(false);
+    }
+  }
+
   return (
     <main>
       <Header />
+
       <section className="relative min-h-screen overflow-hidden">
         {/* ========================= */}
         {/* CARROSSEL DE FUNDO */}
@@ -39,15 +81,15 @@ function Login() {
               alt=""
               aria-hidden="true"
               className={`
-              absolute
-              inset-0
-              h-full
-              w-full
-              object-cover
-              transition-opacity
-              duration-1000
-              ${index === imagemAtual ? "opacity-100" : "opacity-0"}
-            `}
+                absolute
+                inset-0
+                h-full
+                w-full
+                object-cover
+                transition-opacity
+                duration-1000
+                ${index === imagemAtual ? "opacity-100" : "opacity-0"}
+              `}
             />
           ))}
         </div>
@@ -61,22 +103,22 @@ function Login() {
 
         <div
           className="
-          hero
-          relative
-          z-10
-          min-h-screen
-          px-6
-        "
+            hero
+            relative
+            z-10
+            min-h-screen
+            px-6
+          "
         >
           <div
             className="
-            hero-content
-            w-full
-            max-w-6xl
-            flex-col
-            gap-12
-            lg:flex-row-reverse
-          "
+              hero-content
+              w-full
+              max-w-6xl
+              flex-col
+              gap-12
+              lg:flex-row-reverse
+            "
           >
             {/* ========================= */}
             {/* TEXTO */}
@@ -93,28 +135,28 @@ function Login() {
 
               <h1
                 className="
-                text-4xl
-                font-black
-                leading-tight
-                tracking-tight
-                text-white
-                md:text-5xl
-                lg:text-6xl
-              "
+                  text-4xl
+                  font-black
+                  leading-tight
+                  tracking-tight
+                  text-white
+                  md:text-5xl
+                  lg:text-6xl
+                "
               >
                 Bem-vindo ao <span className="text-primary">EntreCausas.</span>
               </h1>
 
               <p
                 className="
-                mx-auto
-                max-w-xl
-                py-6
-                text-lg
-                leading-8
-                text-white/75
-                lg:mx-0
-              "
+                  mx-auto
+                  max-w-xl
+                  py-6
+                  text-lg
+                  leading-8
+                  text-white/75
+                  lg:mx-0
+                "
               >
                 Acesse sua conta para gerenciar conteúdos, acompanhar sua
                 organização e ajudar a fortalecer causas que transformam a
@@ -124,17 +166,17 @@ function Login() {
               <div className="mt-3 flex items-start justify-center gap-3 text-left lg:justify-start">
                 <div
                   className="
-                  flex
-                  h-10
-                  w-10
-                  shrink-0
-                  items-center
-                  justify-center
-                  rounded-xl
-                  bg-white/10
-                  text-primary
-                  backdrop-blur-md
-                "
+                    flex
+                    h-10
+                    w-10
+                    shrink-0
+                    items-center
+                    justify-center
+                    rounded-xl
+                    bg-white/10
+                    text-primary
+                    backdrop-blur-md
+                  "
                 >
                   <i className="fa-solid fa-shield-halved"></i>
                 </div>
@@ -152,16 +194,16 @@ function Login() {
 
             <div
               className="
-              card
-              w-full
-              max-w-md
-              shrink-0
-              rounded-3xl
-              border
-              border-white/20
-              bg-base-100
-              shadow-2xl
-            "
+                card
+                w-full
+                max-w-md
+                shrink-0
+                rounded-3xl
+                border
+                border-white/20
+                bg-base-100
+                shadow-2xl
+              "
             >
               <div className="card-body p-8 md:p-10">
                 <div className="mb-4">
@@ -174,13 +216,15 @@ function Login() {
                   </p>
                 </div>
 
-                <form className="space-y-5">
+                <form className="space-y-5" onSubmit={handleLogin}>
                   <CampoFormulario
                     label="E-mail"
                     id="email"
                     type="email"
                     placeholder="seuemail@email.com"
                     autoComplete="email"
+                    value={email}
+                    onChange={(evento) => setEmail(evento.target.value)}
                     required
                   />
 
@@ -190,8 +234,23 @@ function Login() {
                     type="password"
                     placeholder="Digite sua senha"
                     autoComplete="current-password"
+                    value={senha}
+                    onChange={(evento) => setSenha(evento.target.value)}
                     required
                   />
+
+                  {/* Mensagens de erro e sucesso do login. */}
+                  {erro && (
+                    <p className="text-sm text-error" role="alert">
+                      {erro}
+                    </p>
+                  )}
+
+                  {sucesso && (
+                    <p className="text-sm text-success" role="status">
+                      {sucesso}
+                    </p>
+                  )}
 
                   <div className="flex justify-end">
                     <a
@@ -204,22 +263,26 @@ function Login() {
 
                   <button
                     type="submit"
+                    disabled={carregando}
                     className="
-                    btn
-                    btn-primary
-                    mt-2
-                    h-12
-                    w-full
-                    rounded-xl
-                    text-base
-                    font-bold
-                  "
+                      btn
+                      btn-primary
+                      mt-2
+                      h-12
+                      w-full
+                      rounded-xl
+                      text-base
+                      font-bold
+                    "
                   >
-                    Entrar
-                    <i
-                      className="fa-solid fa-arrow-right ml-2"
-                      aria-hidden="true"
-                    ></i>
+                    {carregando ? "Entrando..." : "Entrar"}
+
+                    {!carregando && (
+                      <i
+                        className="fa-solid fa-arrow-right ml-2"
+                        aria-hidden="true"
+                      ></i>
+                    )}
                   </button>
                 </form>
               </div>
@@ -233,14 +296,14 @@ function Login() {
 
         <div
           className="
-          absolute
-          bottom-6
-          left-1/2
-          z-20
-          flex
-          -translate-x-1/2
-          gap-2
-        "
+            absolute
+            bottom-6
+            left-1/2
+            z-20
+            flex
+            -translate-x-1/2
+            gap-2
+          "
         >
           {imagens.map((imagem, index) => (
             <button
@@ -249,19 +312,20 @@ function Login() {
               onClick={() => setImagemAtual(index)}
               aria-label={`Exibir imagem ${index + 1}`}
               className={`
-              rounded-full
-              transition-all
-              duration-300
-              ${
-                index === imagemAtual
-                  ? "h-2.5 w-8 bg-primary"
-                  : "h-2.5 w-2.5 bg-white/50 hover:bg-white"
-              }
-            `}
+                rounded-full
+                transition-all
+                duration-300
+                ${
+                  index === imagemAtual
+                    ? "h-2.5 w-8 bg-primary"
+                    : "h-2.5 w-2.5 bg-white/50 hover:bg-white"
+                }
+              `}
             />
           ))}
         </div>
       </section>
+
       <OngsCarrosel />
       <Footer />
     </main>
