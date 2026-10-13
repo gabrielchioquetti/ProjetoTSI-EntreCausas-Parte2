@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import Header from "../../components/Header/Header";
@@ -10,6 +11,7 @@ import OngsCarrossel from "../../components/Ongs/OngsCarrossel";
 import BackToTop from "../../components/Acessibilidade/BackToTop";
 import VLibras from "../../components/Acessibilidade/VLibras";
 import UserWay from "../../components/Acessibilidade/UserWay";
+import { apiFetch } from "../../services/Api.js";
 
 const imagens = [
   "../../img/carrossel/instituto-nosso-lar/fotografia-Instituto-Nosso-Lar-Horizontal-Desktop.jpg",
@@ -21,14 +23,19 @@ const passosCadastro = ["Dados da ONG", "Descrição", "Endereço"];
 
 function FormularioPostPage() {
   const navigate = useNavigate();
+
   const [imagemAtual, setImagemAtual] = useState(0);
   const [passoAtual, setPassoAtual] = useState(0);
   const [dadosCadastro, setDadosCadastro] = useState({});
+  const [cadastroEnviando, setCadastroEnviando] = useState(false);
+  const [erroCadastro, setErroCadastro] = useState("");
 
   useEffect(() => {
     const intervalo = setInterval(() => {
       setImagemAtual((imagemAnterior) =>
-        imagemAnterior === imagens.length - 1 ? 0 : imagemAnterior + 1,
+        imagemAnterior === imagens.length - 1
+          ? 0
+          : imagemAnterior + 1,
       );
     }, 5000);
 
@@ -39,16 +46,103 @@ function FormularioPostPage() {
     window.scrollTo(0, 0);
   }, [passoAtual]);
 
-  function concluirCadastro(dadosEndereco) {
-    const dadosCompletos = { ...dadosCadastro, ...dadosEndereco };
-    navigate("/", {
-      state: {
-        cadastroOngResultado: {
-          tipo: "success",
-          mensagem: `Cadastro de ${dadosCompletos.nome} concluído com sucesso!`,
+  // Envia os dados das três etapas para o backend.
+  async function concluirCadastro(dadosEndereco) {
+    if (cadastroEnviando) return;
+
+    setCadastroEnviando(true);
+    setErroCadastro("");
+
+    try {
+      const dadosCompletos = {
+        ...dadosCadastro,
+        ...dadosEndereco,
+      };
+
+      const formulario = new FormData();
+
+      // Dados principais da ONG.
+      formulario.append("nome", dadosCompletos.nome);
+      formulario.append("cnpj", dadosCompletos.cnpj);
+      formulario.append("telefone", dadosCompletos.telefone);
+
+      if (dadosCompletos.instagram) {
+        formulario.append("instagram", dadosCompletos.instagram);
+      }
+
+      // Descrições.
+      formulario.append(
+        "descricaoCurta",
+        dadosCompletos.descricaoCurta,
+      );
+
+      formulario.append(
+        "descricaoCompleta",
+        dadosCompletos.descricaoCompleta,
+      );
+
+      // Categorias: o backend recebe um campo para cada ID.
+      (dadosCompletos.categorias || []).forEach((categoria) => {
+        const idCategoria =
+          typeof categoria === "object"
+            ? categoria.idCategoria
+            : categoria;
+
+        if (idCategoria != null) {
+          formulario.append("categorias", String(idCategoria));
+        }
+      });
+
+      // Endereço.
+      formulario.append("cep", dadosCompletos.cep);
+      formulario.append("logradouro", dadosCompletos.logradouro);
+      formulario.append("numero", dadosCompletos.numero);
+
+      if (dadosCompletos.complemento) {
+        formulario.append(
+          "complemento",
+          dadosCompletos.complemento,
+        );
+      }
+
+      formulario.append("bairro", dadosCompletos.bairro);
+      formulario.append("cidade", dadosCompletos.cidade);
+      formulario.append("estado", dadosCompletos.estado);
+
+      // Imagens: o backend recebe um campo para cada arquivo.
+      (dadosCompletos.imagens || []).forEach((imagem) => {
+        if (imagem instanceof File) {
+          formulario.append("imagens", imagem);
+        }
+      });
+
+      // Não definir Content-Type manualmente.
+      // O navegador precisa incluir o boundary do multipart.
+      await apiFetch("/api/ongs", {
+        method: "POST",
+        body: formulario,
+      });
+
+      // Só redireciona depois que a requisição for concluída.
+      navigate("/", {
+        state: {
+          cadastroOngResultado: {
+            tipo: "success",
+            mensagem:
+              `Cadastro de ${dadosCompletos.nome} enviado com sucesso!`,
+          },
         },
-      },
-    });
+      });
+    } catch (erro) {
+      console.error("Erro ao cadastrar ONG:", erro);
+
+      setErroCadastro(
+        erro.message ||
+          "Não foi possível cadastrar a ONG. Verifique os dados e tente novamente.",
+      );
+    } finally {
+      setCadastroEnviando(false);
+    }
   }
 
   function cancelarPost() {
@@ -85,10 +179,7 @@ function FormularioPostPage() {
           id="conteudo-principal"
           className="relative overflow-hidden py-8 lg:py-10"
         >
-          {/* ======================================== */}
           {/* CARROSSEL DE FUNDO */}
-          {/* ======================================== */}
-
           <div className="absolute inset-0">
             {imagens.map((imagem, indice) => (
               <img
@@ -104,7 +195,6 @@ function FormularioPostPage() {
                   object-cover
                   transition-opacity
                   duration-1000
-
                   ${indice === imagemAtual ? "opacity-100" : "opacity-0"}
                 `}
               />
@@ -114,10 +204,7 @@ function FormularioPostPage() {
           {/* Overlay escuro */}
           <div className="absolute inset-0 bg-black/65"></div>
 
-          {/* ======================================== */}
           {/* CONTEÚDO */}
-          {/* ======================================== */}
-
           <div className="relative z-10 mx-auto w-full max-w-7xl px-6 lg:px-10">
             {/* CABEÇALHO */}
             <div className="mb-5 max-w-3xl">
@@ -159,10 +246,12 @@ function FormularioPostPage() {
                 <span className="font-bold uppercase tracking-[0.14em] text-primary">
                   Etapa {passoAtual + 1}/{passosCadastro.length}
                 </span>
+
                 <span className="text-white/75">
                   {passosCadastro[passoAtual]}
                 </span>
               </div>
+
               <div
                 role="progressbar"
                 aria-label="Progresso do cadastro"
@@ -180,29 +269,60 @@ function FormularioPostPage() {
               </div>
             </div>
 
+            {/* Exibe o erro sem perder os dados das etapas anteriores. */}
+            {erroCadastro && (
+              <div
+                role="alert"
+                className="mb-5 rounded-xl border border-error bg-base-100 p-4 text-error"
+              >
+                {erroCadastro}
+              </div>
+            )}
+
             <div hidden={passoAtual !== 0}>
               <CadastroOng
                 onNext={(dados) => {
-                  setDadosCadastro((anteriores) => ({ ...anteriores, ...dados }));
+                  setDadosCadastro((anteriores) => ({
+                    ...anteriores,
+                    ...dados,
+                  }));
+
+                  setErroCadastro("");
                   setPassoAtual(1);
                 }}
                 onCancel={cancelarPost}
               />
             </div>
+
             <div hidden={passoAtual !== 1}>
               <DescricaoOng
                 onNext={(dados) => {
-                  setDadosCadastro((anteriores) => ({ ...anteriores, ...dados }));
+                  setDadosCadastro((anteriores) => ({
+                    ...anteriores,
+                    ...dados,
+                  }));
+
+                  setErroCadastro("");
                   setPassoAtual(2);
                 }}
                 onBack={() => setPassoAtual(0)}
               />
             </div>
+
             <div hidden={passoAtual !== 2}>
               <EnderecoOng
                 onSubmit={concluirCadastro}
                 onBack={() => setPassoAtual(1)}
               />
+
+              {cadastroEnviando && (
+                <p
+                  className="mt-4 text-center font-bold text-white"
+                  role="status"
+                >
+                  Enviando cadastro... Aguarde.
+                </p>
+              )}
             </div>
 
             {/* BOLINHAS DO CARROSSEL */}
@@ -217,7 +337,6 @@ function FormularioPostPage() {
                     rounded-full
                     transition-all
                     duration-300
-
                     ${
                       indice === imagemAtual
                         ? "h-2.5 w-8 bg-primary"

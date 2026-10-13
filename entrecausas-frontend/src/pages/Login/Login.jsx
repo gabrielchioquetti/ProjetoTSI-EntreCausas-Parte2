@@ -1,4 +1,8 @@
+
 import { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router";
+
+import { useAuth } from "../../context/AuthContext.jsx";
 import CampoFormulario from "../../components/Form/CampoFormulario";
 import Header from "../../components/Header/Header";
 import OngsCarrosel from "../../components/Ongs/OngsCarrossel";
@@ -12,6 +16,10 @@ const imagens = [
 ];
 
 function Login() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { setUsuario } = useAuth();
+
   const [imagemAtual, setImagemAtual] = useState(0);
 
   // Estados dos campos e das mensagens do formulário.
@@ -25,7 +33,9 @@ function Login() {
   useEffect(() => {
     const intervalo = setInterval(() => {
       setImagemAtual((imagemAnterior) =>
-        imagemAnterior === imagens.length - 1 ? 0 : imagemAnterior + 1,
+        imagemAnterior === imagens.length - 1
+          ? 0
+          : imagemAnterior + 1
       );
     }, 5000);
 
@@ -52,13 +62,21 @@ function Login() {
         }),
       });
 
-      // Confirma o login sem expor informações sensíveis.
-      setSucesso(`Login realizado com sucesso. Bem-vindo, ${usuario.nome}!`);
+      // Atualiza o usuário autenticado no React.
+      setUsuario(usuario);
 
       // Limpa a senha após o login.
       setSenha("");
+
+      // Retorna à página solicitada ou abre o formulário de ONG.
+      const destino =
+        location.state?.from?.pathname || "/formulario-ong";
+
+      navigate(destino, { replace: true });
     } catch (error) {
-      setErro(error.message || "Não foi possível realizar o login.");
+      setErro(
+        error.message || "Não foi possível realizar o login."
+      );
     } finally {
       setCarregando(false);
     }

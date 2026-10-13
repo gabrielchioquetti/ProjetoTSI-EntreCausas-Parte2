@@ -1,11 +1,8 @@
-import { useRef, useState } from "react";
+
+import { useEffect, useRef, useState } from "react";
 import CampoFormulario from "../Form/CampoFormulario";
 import UploadImagem from "../Form/UploadImagem";
-import listaOngs from "../../data/ongs";
-
-const categoriasDisponiveis = [
-  ...new Set(listaOngs.map((ong) => ong.categoriaPrincipal).filter(Boolean)),
-];
+import { apiFetch } from "../../services/Api.js";
 
 const tiposImagemPermitidos = {
   "image/jpeg": [".jpg", ".jpeg"],
@@ -27,26 +24,71 @@ function ehImagemPermitida(arquivo) {
 function DescricaoOng({ onNext, onBack }) {
   const [descricaoCurta, setDescricaoCurta] = useState("");
   const [descricaoCompleta, setDescricaoCompleta] = useState("");
+  const [categoriasDisponiveis, setCategoriasDisponiveis] = useState([]);
   const [categoriasSelecionadas, setCategoriasSelecionadas] = useState([]);
   const [imagensSelecionadas, setImagensSelecionadas] = useState([]);
   const [erroCategorias, setErroCategorias] = useState("");
+  const [erroCarregamentoCategorias, setErroCarregamentoCategorias] =
+    useState("");
   const [erroImagens, setErroImagens] = useState("");
+  const [categoriasCarregando, setCategoriasCarregando] = useState(true);
   const [validandoImagens, setValidandoImagens] = useState(false);
+
   const validacaoAtual = useRef(0);
+
   const podeAvancar =
     descricaoCurta.trim().length > 0 &&
     descricaoCompleta.trim().length > 0 &&
     categoriasSelecionadas.length > 0 &&
     imagensSelecionadas.length >= 3 &&
     imagensSelecionadas.length <= 5 &&
+    !categoriasCarregando &&
+    !erroCarregamentoCategorias &&
     !validandoImagens;
 
-  function alterarCategoria(categoria) {
+  // Carrega as categorias cadastradas no banco de dados.
+  useEffect(() => {
+    let componenteAtivo = true;
+
+    async function carregarCategorias() {
+      try {
+        const categorias = await apiFetch("/api/categorias");
+
+        if (!componenteAtivo) return;
+
+        if (!Array.isArray(categorias)) {
+          throw new Error("Resposta inválida ao carregar as categorias.");
+        }
+
+        setCategoriasDisponiveis(categorias);
+        setErroCarregamentoCategorias("");
+      } catch (erro) {
+        if (!componenteAtivo) return;
+
+        setErroCarregamentoCategorias(
+          erro.message || "Não foi possível carregar as categorias.",
+        );
+      } finally {
+        if (componenteAtivo) {
+          setCategoriasCarregando(false);
+        }
+      }
+    }
+
+    carregarCategorias();
+
+    return () => {
+      componenteAtivo = false;
+    };
+  }, []);
+
+  function alterarCategoria(idCategoria) {
     setCategoriasSelecionadas((selecionadas) =>
-      selecionadas.includes(categoria)
-        ? selecionadas.filter((item) => item !== categoria)
-        : [...selecionadas, categoria],
+      selecionadas.includes(idCategoria)
+        ? selecionadas.filter((id) => id !== idCategoria)
+        : [...selecionadas, idCategoria],
     );
+
     setErroCategorias("");
   }
 
@@ -54,6 +96,7 @@ function DescricaoOng({ onNext, onBack }) {
     const input = event.currentTarget;
     const arquivos = Array.from(input.files || []);
     const idValidacao = ++validacaoAtual.current;
+
     setValidandoImagens(false);
 
     if (arquivos.length < 3 || arquivos.length > 5) {
@@ -65,12 +108,15 @@ function DescricaoOng({ onNext, onBack }) {
     if (arquivos.some((arquivo) => !ehImagemPermitida(arquivo))) {
       input.value = "";
       setImagensSelecionadas([]);
-      setErroImagens("Envie apenas imagens JPG, PNG ou WEBP de até 5 MB cada.");
+      setErroImagens(
+        "Envie apenas imagens JPG, PNG ou WEBP de até 5 MB cada.",
+      );
       return;
     }
 
     setValidandoImagens(true);
     setErroImagens("");
+
     const imagensValidas = await Promise.all(
       arquivos.map(async (arquivo) => {
         try {
@@ -104,6 +150,11 @@ function DescricaoOng({ onNext, onBack }) {
 
   function enviarFormulario(event) {
     event.preventDefault();
+
+    if (categoriasCarregando || erroCarregamentoCategorias) {
+      setErroCategorias("Não foi possível carregar as categorias.");
+      return;
+    }
 
     if (categoriasSelecionadas.length === 0) {
       setErroCategorias("Selecione pelo menos uma categoria.");
@@ -199,24 +250,84 @@ function DescricaoOng({ onNext, onBack }) {
               *
             </span>
           </legend>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {categoriasDisponiveis.map((categoria) => (
-              <label
-                key={categoria}
-                className="flex cursor-pointer items-center gap-3 rounded-xl border border-base-300 px-4 py-3 text-sm text-base-content transition hover:border-primary"
+
+          {categoriasCarregando && (
+            <p className="text-sm text-base-content/70" aria-live="polite">
+              Carregando categorias...
+            </p>
+          )}
+
+          {erroCarregamentoCategorias && (
+            <div className="space-y-2">
+              <p className="text-sm text-error" role="alert">
+                {erroCarregamentoCategorias}
+              </p>
+              <button
+                type="button"
+                className="btn btn-sm rounded-xl"
+                onClick={() => {
+                  setCategoriasCarregando(true);
+                  setErroCarregamentoCategorias("");
+
+                  apiFetch("/api/categorias")
+                    .then((categorias) => {
+                      if (!Array.isArray(categorias)) {
+                        throw new Error(
+                          "Resposta inválida ao carregar as categorias.",
+                        );
+                      }
+
+                      setCategoriasDisponiveis(categorias);
+                    })
+                    .catch((erro) => {
+                      setErroCarregamentoCategorias(
+                        erro.message ||
+                          "Não foi possível carregar as categorias.",
+                      );
+                    })
+                    .finally(() => setCategoriasCarregando(false));
+                }}
               >
-                <input
-                  type="checkbox"
-                  name="categorias"
-                  value={categoria}
-                  checked={categoriasSelecionadas.includes(categoria)}
-                  onChange={() => alterarCategoria(categoria)}
-                  className="checkbox checkbox-primary checkbox-sm"
-                />
-                {categoria}
-              </label>
-            ))}
-          </div>
+                Tentar novamente
+              </button>
+            </div>
+          )}
+
+          {!categoriasCarregando &&
+            !erroCarregamentoCategorias &&
+            categoriasDisponiveis.length === 0 && (
+              <p className="text-sm text-base-content/70">
+                Nenhuma categoria está cadastrada no momento.
+              </p>
+            )}
+
+          {!categoriasCarregando &&
+            !erroCarregamentoCategorias &&
+            categoriasDisponiveis.length > 0 && (
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {categoriasDisponiveis.map((categoria) => (
+                  <label
+                    key={categoria.idCategoria}
+                    className="flex cursor-pointer items-center gap-3 rounded-xl border border-base-300 px-4 py-3 text-sm text-base-content transition hover:border-primary"
+                  >
+                    <input
+                      type="checkbox"
+                      name="categorias"
+                      value={categoria.idCategoria}
+                      checked={categoriasSelecionadas.includes(
+                        categoria.idCategoria,
+                      )}
+                      onChange={() =>
+                        alterarCategoria(categoria.idCategoria)
+                      }
+                      className="checkbox checkbox-primary checkbox-sm"
+                    />
+                    {categoria.nome}
+                  </label>
+                ))}
+              </div>
+            )}
+
           {erroCategorias && (
             <p className="mt-2 text-sm text-error" role="alert">
               {erroCategorias}
@@ -237,7 +348,10 @@ function DescricaoOng({ onNext, onBack }) {
             onChange={validarImagens}
           />
           {validandoImagens && (
-            <p className="mt-2 text-sm text-base-content/70" aria-live="polite">
+            <p
+              className="mt-2 text-sm text-base-content/70"
+              aria-live="polite"
+            >
               Validando arquivos selecionados...
             </p>
           )}

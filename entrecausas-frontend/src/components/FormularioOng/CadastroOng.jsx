@@ -7,20 +7,41 @@ function CadastroOng({ onNext, onCancel }) {
   const [podeAvancar, setPodeAvancar] = useState(false);
   const formularioRef = useRef(null);
 
+  // Mantém os valores digitados nesta etapa.
+  const [dados, setDados] = useState({
+    nome: "",
+    cnpj: "",
+    telefone: "",
+    instagram: "",
+  });
+
+  // Atualiza o campo alterado sem perder os outros valores.
+  function atualizarCampo(event) {
+    const { id, value } = event.target;
+
+    setDados((anteriores) => ({
+      ...anteriores,
+      [id]: value,
+    }));
+  }
+
   function validarFormulario() {
-    setPodeAvancar(formularioRef.current?.checkValidity() ?? false);
+    setPodeAvancar(
+      formularioRef.current?.checkValidity() ?? false,
+    );
   }
 
   function avancar(event) {
     event.preventDefault();
-    const formData = new FormData(event.currentTarget);
 
-    onNext({
-      nome: formData.get("nome"),
-      cnpj: formData.get("cnpj"),
-      telefone: formData.get("telefone"),
-      instagram: formData.get("instagram"),
-    });
+    const formulario = event.currentTarget;
+
+    if (!formulario.checkValidity()) {
+      formulario.reportValidity();
+      return;
+    }
+
+    onNext(dados);
   }
 
   return (
@@ -32,7 +53,10 @@ function CadastroOng({ onNext, onCancel }) {
     >
       <div className="mb-9 flex items-center gap-4">
         <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-secondary text-2xl text-primary">
-          <i className="fa-solid fa-pen-to-square" aria-hidden="true"></i>
+          <i
+            className="fa-solid fa-pen-to-square"
+            aria-hidden="true"
+          ></i>
         </div>
 
         <div>
@@ -55,17 +79,29 @@ function CadastroOng({ onNext, onCancel }) {
           placeholder="Ex: Instituto Esperança"
           autoComplete="organization"
           required
+          value={dados.nome}
+          onChange={atualizarCampo}
         />
 
-        <CampoDocumento tipo="cnpj" required />
+        <CampoDocumento
+          tipo="cnpj"
+          required
+          value={dados.cnpj}
+          onChange={atualizarCampo}
+        />
 
-        <CampoTelefone required />
+        <CampoTelefone
+          required
+          value={dados.telefone}
+          onChange={atualizarCampo}
+        />
 
         <CampoFormulario
           label="Instagram"
           id="instagram"
           placeholder="@suaong"
-          required
+          value={dados.instagram}
+          onChange={atualizarCampo}
         />
       </div>
 
@@ -79,6 +115,7 @@ function CadastroOng({ onNext, onCancel }) {
         >
           Cancelar
         </button>
+
         <button
           type="submit"
           disabled={!podeAvancar}

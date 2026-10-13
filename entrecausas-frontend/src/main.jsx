@@ -1,7 +1,11 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Routes, Route } from "react-router";
+
 import "./styles/style.css";
+
+import { AuthProvider } from "./context/AuthContext.jsx";
+import RotaProtegida from "./routes/RotaProtegida.jsx";
 
 import Home from "./pages/Home";
 import Detalhes from "./pages/Detalhes/detalhes";
@@ -15,23 +19,34 @@ import CadastroUsuario from "./pages/CadastroUsuario/CadastroUsuario";
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Home />} />
+      <AuthProvider>
+        <Routes>
+          {/* Páginas públicas. */}
+          <Route path="/" element={<Home />} />
 
-        <Route path="/detalhes" element={<Detalhes />} />
+          <Route path="/detalhes" element={<Detalhes />} />
 
-        <Route path="/impacto" element={<Impacto />} />
+          <Route path="/impacto" element={<Impacto />} />
 
-        <Route path="/login" element={<Login />} />
+          <Route path="/login" element={<Login />} />
 
-        <Route path="/feed" element={<Feed />} />
+          <Route path="/feed" element={<Feed />} />
 
-        <Route path="/formulario-post" element={<FormularioPost />} />
+          <Route path="/Cadastro" element={<CadastroUsuario />} />
 
-        <Route path="/formulario-ong" element={<FormularioOng />} />
+          <Route path="/formulario-post" element={<FormularioPost />} />
 
-        <Route path="/Cadastro" element={<CadastroUsuario />} />
-      </Routes>
+          {/* O cadastro de ONG exige autenticação. */}
+          <Route
+            path="/formulario-ong"
+            element={
+              <RotaProtegida>
+                <FormularioOng />
+              </RotaProtegida>
+            }
+          />
+        </Routes>
+      </AuthProvider>
     </BrowserRouter>
   </StrictMode>,
 );
