@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import br.edu.ifsp.entrecausas.dto.SolicitacaoAnaliseDTO;
 import br.edu.ifsp.entrecausas.dto.SolicitacaoCriacaoDTO;
 import br.edu.ifsp.entrecausas.dto.SolicitacaoResponseDTO;
+import br.edu.ifsp.entrecausas.dto.StatusSolicitacaoResponseDTO;
 import br.edu.ifsp.entrecausas.entity.Ong;
 import br.edu.ifsp.entrecausas.entity.Solicitacao;
 import br.edu.ifsp.entrecausas.entity.StatusSolicitacao;
@@ -31,7 +32,7 @@ public class SolicitacaoService {
     private final UsuarioRepository usuarioRepository;
     private final StatusSolicitacaoRepository statusSolicitacaoRepository;
 
-    // Injeção de dependências via construtor.
+    // Injeção de dependência via construtor.
     public SolicitacaoService(
             SolicitacaoRepository solicitacaoRepository,
             OngRepository ongRepository,
@@ -75,11 +76,12 @@ public class SolicitacaoService {
     }
 
     // Processa a análise da solicitação.
-    // O administrador pode aprovar ou rejeitar.
+    // O administrador é identificado pela sessão autenticada.
     @Transactional
     public SolicitacaoResponseDTO analisar(
             Long idSolicitacao,
-            SolicitacaoAnaliseDTO dto) {
+            SolicitacaoAnaliseDTO dto,
+            String emailAdministrador) {
 
         // Busca a solicitação.
         Solicitacao solicitacao =
@@ -88,9 +90,14 @@ public class SolicitacaoService {
         // A solicitação só pode ser analisada uma vez.
         validarSolicitacaoPendente(solicitacao);
 
-        // Busca o administrador.
+        // Busca o usuário pela identidade autenticada.
         Usuario administrador =
-            buscarUsuario(dto.idAdministrador());
+            usuarioRepository.findByEmail(emailAdministrador)
+                .orElseThrow(() ->
+                    new RecursoNaoEncontradoException(
+                        "Usuário autenticado não encontrado."
+                    )
+                );
 
         // Verifica se o usuário é administrador.
         validarAdministrador(administrador);
@@ -125,9 +132,7 @@ public class SolicitacaoService {
         solicitacao.setStatus(novoStatus);
 
         // Registra a data da análise.
-        solicitacao.setDataAnalise(
-            LocalDateTime.now()
-        );
+        solicitacao.setDataAnalise(LocalDateTime.now());
 
         // O motivo só é armazenado quando houver rejeição.
         if (nomeStatus.equals("REJEITADO")) {
@@ -154,10 +159,22 @@ public class SolicitacaoService {
             .collect(Collectors.toList());
     }
 
+    // Lista os status disponíveis para análise.
+    @Transactional(readOnly = true)
+    public List<StatusSolicitacaoResponseDTO> listarStatus() {
+
+        return statusSolicitacaoRepository.findAll()
+            .stream()
+            .map(status -> new StatusSolicitacaoResponseDTO(
+                status.getIdStatus(),
+                status.getNome()
+            ))
+            .toList();
+    }
+
     // Busca uma solicitação pelo ID.
     @Transactional(readOnly = true)
-    public SolicitacaoResponseDTO buscarPorId(
-            Long id) {
+    public SolicitacaoResponseDTO buscarPorId(Long id) {
 
         Solicitacao solicitacao =
             buscarSolicitacao(id);
@@ -216,8 +233,7 @@ public class SolicitacaoService {
         return ongRepository.findById(idOng)
             .orElseThrow(() ->
                 new RecursoNaoEncontradoException(
-                    "ONG não encontrada com o ID: "
-                    + idOng
+                    "ONG não encontrada com o ID: " + idOng
                 )
             );
     }
@@ -238,8 +254,7 @@ public class SolicitacaoService {
     private Solicitacao buscarSolicitacao(
             Long idSolicitacao) {
 
-        return solicitacaoRepository
-            .findById(idSolicitacao)
+        return solicitacaoRepository.findById(idSolicitacao)
             .orElseThrow(() ->
                 new RecursoNaoEncontradoException(
                     "Solicitação não encontrada com o ID: "
@@ -249,15 +264,12 @@ public class SolicitacaoService {
     }
 
     // Busca um status pelo ID.
-    private StatusSolicitacao buscarStatus(
-            Long idStatus) {
+    private StatusSolicitacao buscarStatus(Long idStatus) {
 
-        return statusSolicitacaoRepository
-            .findById(idStatus)
+        return statusSolicitacaoRepository.findById(idStatus)
             .orElseThrow(() ->
                 new RecursoNaoEncontradoException(
-                    "Status não encontrado com o ID: "
-                    + idStatus
+                    "Status não encontrado com o ID: " + idStatus
                 )
             );
     }
@@ -266,8 +278,7 @@ public class SolicitacaoService {
     private StatusSolicitacao buscarStatusPorNome(
             String nome) {
 
-        return statusSolicitacaoRepository
-            .findByNome(nome)
+        return statusSolicitacaoRepository.findByNome(nome)
             .orElseThrow(() ->
                 new RecursoNaoEncontradoException(
                     "Status '" + nome
@@ -293,8 +304,7 @@ public class SolicitacaoService {
     }
 
     // Verifica se o usuário possui função de administrador.
-    private void validarAdministrador(
-            Usuario administrador) {
+    private void validarAdministrador(Usuario administrador) {
 
         if (administrador.getFuncao() == null
                 || administrador.getFuncao().getNome() == null
@@ -303,7 +313,7 @@ public class SolicitacaoService {
                     .equalsIgnoreCase("ADMINISTRADOR")) {
 
             throw new ConflitoException(
-                "O usuário informado não possui "
+                "O usuário autenticado não possui "
                 + "permissão de administrador."
             );
         }

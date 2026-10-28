@@ -20,8 +20,16 @@ const adminLinks = [
 ];
 
 const ongLinks = [
-  { key: "editOrganization", nome: "Editar Organização", icon: "fa-pen-to-square" },
-  { key: "viewOrganization", nome: "Visualizar Organização", icon: "fa-eye" },
+  {
+    key: "editOrganization",
+    nome: "Editar Organização",
+    icon: "fa-pen-to-square",
+  },
+  {
+    key: "viewOrganization",
+    nome: "Visualizar Organização",
+    icon: "fa-eye",
+  },
   {
     key: "manageOrganizationDeletion",
     nome: "Solicitar Exclusão da Organização",
@@ -30,14 +38,34 @@ const ongLinks = [
 ];
 
 const sharedNavigationLinks = [
-  { key: "discoverOrganizations", nome: "Descobrir ONGs", icon: "fa-magnifying-glass" },
-  { key: "impact", nome: "Impacto", icon: "fa-chart-line" },
-  { key: "contact", nome: "Fale Conosco", icon: "fa-envelope" },
+  {
+    key: "discoverOrganizations",
+    nome: "Descobrir ONGs",
+    icon: "fa-magnifying-glass",
+  },
+  {
+    key: "impact",
+    nome: "Impacto",
+    icon: "fa-chart-line",
+  },
+  {
+    key: "contact",
+    nome: "Fale Conosco",
+    icon: "fa-envelope",
+  },
 ];
 
 const profileLinks = [
-  { key: "editUser", nome: "Editar Usuário", icon: "fa-user-pen" },
-  { key: "changePassword", nome: "Alterar Senha", icon: "fa-key" },
+  {
+    key: "editUser",
+    nome: "Editar Usuário",
+    icon: "fa-user-pen",
+  },
+  {
+    key: "changePassword",
+    nome: "Alterar Senha",
+    icon: "fa-key",
+  },
 ];
 
 function AuthenticatedMenuLink({
@@ -56,7 +84,10 @@ function AuthenticatedMenuLink({
         title={disabledReason}
         className={`${className} cursor-not-allowed text-base-content/40`}
       >
-        <i className={`fa-solid ${item.icon} w-5 text-center`} aria-hidden="true" />
+        <i
+          className={`fa-solid ${item.icon} w-5 text-center`}
+          aria-hidden="true"
+        />
         {item.nome}
       </span>
     );
@@ -74,7 +105,10 @@ function AuthenticatedMenuLink({
         }`
       }
     >
-      <i className={`fa-solid ${item.icon} w-5 text-center`} aria-hidden="true" />
+      <i
+        className={`fa-solid ${item.icon} w-5 text-center`}
+        aria-hidden="true"
+      />
       {item.nome}
     </NavLink>
   );
@@ -96,13 +130,27 @@ function Header({
     { nome: "Fale Conosco", to: "/fale-conosco" },
   ];
 
-  const hasAuthenticatedMenu =
-    isAuthenticated === true && (userType === "ADM" || userType === "ONG");
+  // Identifica os perfis reconhecidos pelo projeto.
+  const perfilReconhecido = userType === "ADM" || userType === "USUARIO";
 
-  if (hasAuthenticatedMenu) {
-    const roleLinks =
-      userType === "ADM" ? adminLinks : userType === "ONG" ? ongLinks : [];
+  // Exibe o menu correspondente ao perfil autenticado.
+  const hasAuthenticatedMenu = isAuthenticated === true && perfilReconhecido;
 
+  // Evita exibir o menu público durante uma sessão autenticada.
+  const sessaoSemPerfilReconhecido =
+    isAuthenticated === true && !perfilReconhecido;
+
+  // Seleciona as opções conforme o perfil autenticado.
+  const roleLinks =
+    userType === "ADM" ? adminLinks : userType === "USUARIO" ? ongLinks : [];
+
+  // Fecha o menu antes de solicitar o encerramento da sessão.
+  function handleLogout() {
+    setIsMenuOpen(false);
+    onLogout?.();
+  }
+
+  if (hasAuthenticatedMenu || sessaoSemPerfilReconhecido) {
     return (
       <>
         <button
@@ -133,7 +181,9 @@ function Header({
           "
         >
           <i
-            className={`fa-solid ${isMenuOpen ? "fa-xmark" : "fa-bars"} text-lg`}
+            className={`fa-solid ${
+              isMenuOpen ? "fa-xmark" : "fa-bars"
+            } text-lg`}
             aria-hidden="true"
           />
         </button>
@@ -172,105 +222,112 @@ function Header({
           </Link>
 
           <nav className="flex-1 space-y-6 overflow-y-auto" aria-label="Menu">
-            {(userType === "ONG" || userType === "ADM") && (
-              <section>
-                <ul className="space-y-1">
-                  {sharedNavigationLinks.map((item) => (
-                    <li key={item.key}>
-                      <AuthenticatedMenuLink
-                        item={item}
-                        to={menuRoutes?.[item.key]}
-                        disabledReason={menuRouteMessages?.[item.key]}
-                        onClick={() => setIsMenuOpen(false)}
-                      />
+            {hasAuthenticatedMenu && (
+              <>
+                <section>
+                  <ul className="space-y-1">
+                    {sharedNavigationLinks.map((item) => (
+                      <li key={item.key}>
+                        <AuthenticatedMenuLink
+                          item={item}
+                          to={menuRoutes?.[item.key]}
+                          disabledReason={menuRouteMessages?.[item.key]}
+                          onClick={() => setIsMenuOpen(false)}
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+
+                {roleLinks.length > 0 && (
+                  <section>
+                    <h2 className="mb-2 px-3 text-xs font-bold uppercase tracking-wider text-base-content/50">
+                      {userType === "ADM" ? "Administração" : "Organização"}
+                    </h2>
+
+                    <ul className="space-y-1">
+                      {roleLinks.map((item) => (
+                        <li key={item.key}>
+                          <AuthenticatedMenuLink
+                            item={item}
+                            to={menuRoutes?.[item.key]}
+                            disabledReason={menuRouteMessages?.[item.key]}
+                            onClick={() => setIsMenuOpen(false)}
+                          />
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                )}
+
+                <section>
+                  <h2 className="mb-2 px-3 text-xs font-bold uppercase tracking-wider text-base-content/50">
+                    Meu Perfil
+                  </h2>
+
+                  <ul className="space-y-1">
+                    {profileLinks.map((item) => (
+                      <li key={item.key}>
+                        <AuthenticatedMenuLink
+                          item={item}
+                          to={menuRoutes?.[item.key]}
+                          disabledReason={menuRouteMessages?.[item.key]}
+                          onClick={() => setIsMenuOpen(false)}
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+
+                <section>
+                  <ul className="space-y-1">
+                    <li>
+                      <button
+                        type="button"
+                        onClick={handleLogout}
+                        disabled={!onLogout}
+                        title={
+                          !onLogout
+                            ? "Ação de logout ainda não configurada"
+                            : undefined
+                        }
+                        className="
+                          flex
+                          w-full
+                          items-center
+                          gap-3
+                          rounded-lg
+                          px-3
+                          py-2.5
+                          text-left
+                          text-sm
+                          font-semibold
+                          text-base-content
+                          transition-colors
+                          hover:bg-base-200
+                          hover:text-primary
+                          disabled:cursor-not-allowed
+                          disabled:text-base-content/40
+                        "
+                      >
+                        <i
+                          className="fa-solid fa-right-from-bracket w-5 text-center"
+                          aria-hidden="true"
+                        />
+                        Sair da Conta
+                      </button>
                     </li>
-                  ))}
-                </ul>
-              </section>
+                  </ul>
+                </section>
+              </>
             )}
 
-            {roleLinks.length > 0 && (
-              <section>
-                <h2 className="mb-2 px-3 text-xs font-bold uppercase tracking-wider text-base-content/50">
-                  {userType === "ADM" ? "Administração" : "Organização"}
-                </h2>
-                <ul className="space-y-1">
-                  {roleLinks.map((item) => (
-                    <li key={item.key}>
-                      <AuthenticatedMenuLink
-                        item={item}
-                        to={menuRoutes?.[item.key]}
-                        disabledReason={menuRouteMessages?.[item.key]}
-                        onClick={() => setIsMenuOpen(false)}
-                      />
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
-
-            {userType !== "ADM" && userType !== "ONG" && (
+            {sessaoSemPerfilReconhecido && (
               <p role="status" className="px-3 text-sm text-base-content/60">
-                Perfil não identificado. Configure o tipo como ADM ou ONG para
-                exibir as opções correspondentes.
+                Perfil não identificado. Verifique a função retornada pelo
+                backend para exibir as opções correspondentes.
               </p>
             )}
-
-            <section>
-              <h2 className="mb-2 px-3 text-xs font-bold uppercase tracking-wider text-base-content/50">
-                Meu Perfil
-              </h2>
-              <ul className="space-y-1">
-                {profileLinks.map((item) => (
-                  <li key={item.key}>
-                    <AuthenticatedMenuLink
-                      item={item}
-                      to={menuRoutes?.[item.key]}
-                      onClick={() => setIsMenuOpen(false)}
-                    />
-                  </li>
-                ))}
-              </ul>
-            </section>
-
-            <section>
-              <ul className="space-y-1">
-                <li>
-                  <button
-                    type="button"
-                    onClick={onLogout}
-                    disabled={!onLogout}
-                    title={
-                      !onLogout ? "Ação de logout ainda não configurada" : undefined
-                    }
-                    className="
-                      flex
-                      w-full
-                      items-center
-                      gap-3
-                      rounded-lg
-                      px-3
-                      py-2.5
-                      text-left
-                      text-sm
-                      font-semibold
-                      text-base-content
-                      transition-colors
-                      hover:bg-base-200
-                      hover:text-primary
-                      disabled:cursor-not-allowed
-                      disabled:text-base-content/40
-                    "
-                  >
-                    <i
-                      className="fa-solid fa-right-from-bracket w-5 text-center"
-                      aria-hidden="true"
-                    />
-                    Sair da Conta
-                  </button>
-                </li>
-              </ul>
-            </section>
           </nav>
         </aside>
       </>
@@ -288,7 +345,6 @@ function Header({
 
       <div className="collapse-title navbar">
         {/* LOGO */}
-
         <div className="navbar-start">
           <Link
             to="/"
@@ -305,7 +361,6 @@ function Header({
         </div>
 
         {/* MENU */}
-
         <div className="navbar-end hidden lg:flex">
           <nav className="hidden items-center gap-10 md:flex">
             {links.map((link) => (

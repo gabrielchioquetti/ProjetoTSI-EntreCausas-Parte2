@@ -1,3 +1,4 @@
+
 package br.edu.ifsp.entrecausas.config;
 
 import jakarta.servlet.http.HttpServletResponse;
@@ -6,6 +7,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
@@ -15,6 +17,7 @@ import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 
 @Configuration
+@EnableMethodSecurity
 public class SecurityConfig {
 
     // Persiste a autenticação na sessão HTTP.
@@ -88,6 +91,39 @@ public class SecurityConfig {
                     HttpMethod.POST,
                     "/api/auth/logout"
                 ).permitAll()
+
+                // Somente administradores consultam detalhes
+                // completos das ONGs.
+                .requestMatchers(
+                    "/api/ongs/admin/**"
+                ).hasRole("ADMINISTRADOR")
+
+                // Somente administradores consultam
+                // e analisam solicitações.
+                .requestMatchers(
+                    HttpMethod.GET,
+                    "/api/solicitacoes"
+                ).hasRole("ADMINISTRADOR")
+
+                .requestMatchers(
+                    HttpMethod.GET,
+                    "/api/solicitacoes/status-opcoes"
+                ).hasRole("ADMINISTRADOR")
+
+                .requestMatchers(
+                    HttpMethod.GET,
+                    "/api/solicitacoes/status/**"
+                ).hasRole("ADMINISTRADOR")
+
+                .requestMatchers(
+                    HttpMethod.GET,
+                    "/api/solicitacoes/*"
+                ).hasRole("ADMINISTRADOR")
+
+                .requestMatchers(
+                    HttpMethod.PUT,
+                    "/api/solicitacoes/*/analise"
+                ).hasRole("ADMINISTRADOR")
 
                 // Os demais endpoints exigem autenticação.
                 .anyRequest().authenticated()

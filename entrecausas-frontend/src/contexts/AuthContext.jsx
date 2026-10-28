@@ -61,11 +61,21 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
+  // Encerra a sessão no backend antes de limpar o usuário.
+  const sair = useCallback(async () => {
+    await apiFetch("/api/auth/logout", {
+      method: "POST",
+    });
+
+    setUsuario(null);
+  }, []);
+
   const valor = {
     usuario,
     setUsuario,
     carregando,
     verificarSessao,
+    sair,
   };
 
   return <AuthContext.Provider value={valor}>{children}</AuthContext.Provider>;

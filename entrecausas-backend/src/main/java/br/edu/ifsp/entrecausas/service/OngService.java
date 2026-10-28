@@ -1,8 +1,10 @@
 package br.edu.ifsp.entrecausas.service;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -12,8 +14,15 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import br.edu.ifsp.entrecausas.dto.DescricaoResponseDTO;
+import br.edu.ifsp.entrecausas.dto.EnderecoResponseDTO;
+import br.edu.ifsp.entrecausas.dto.ImagemResponseDTO;
+import br.edu.ifsp.entrecausas.dto.OngCategoriaResponseDTO;
+import br.edu.ifsp.entrecausas.dto.OngDetalhesAdminResponseDTO;
+import br.edu.ifsp.entrecausas.dto.OngMinhaResponseDTO;
 import br.edu.ifsp.entrecausas.dto.OngRequestDTO;
 import br.edu.ifsp.entrecausas.dto.OngResponseDTO;
+
 import br.edu.ifsp.entrecausas.entity.Categoria;
 import br.edu.ifsp.entrecausas.entity.Descricao;
 import br.edu.ifsp.entrecausas.entity.Endereco;
@@ -23,13 +32,16 @@ import br.edu.ifsp.entrecausas.entity.OngCategoria;
 import br.edu.ifsp.entrecausas.entity.Solicitacao;
 import br.edu.ifsp.entrecausas.entity.StatusSolicitacao;
 import br.edu.ifsp.entrecausas.entity.Usuario;
+
 import br.edu.ifsp.entrecausas.exception.ConflitoException;
 import br.edu.ifsp.entrecausas.exception.RecursoNaoEncontradoException;
+
 import br.edu.ifsp.entrecausas.repository.CategoriaRepository;
 import br.edu.ifsp.entrecausas.repository.OngRepository;
 import br.edu.ifsp.entrecausas.repository.SolicitacaoRepository;
 import br.edu.ifsp.entrecausas.repository.StatusSolicitacaoRepository;
 import br.edu.ifsp.entrecausas.repository.UsuarioRepository;
+
 import br.edu.ifsp.entrecausas.security.AesCryptoUtil;
 import br.edu.ifsp.entrecausas.security.HmacCryptoUtil;
 
@@ -91,10 +103,12 @@ public class OngService {
         validarObrigatorio(cnpjInformado, "Informe o CNPJ.");
         validarObrigatorio(telefoneInformado, "Informe o telefone.");
         validarObrigatorio(descricaoCurta, "Informe a descrição curta.");
+
         validarObrigatorio(
             descricaoCompleta,
             "Informe a descrição completa."
         );
+
         validarObrigatorio(cep, "Informe o CEP.");
         validarObrigatorio(logradouro, "Informe o logradouro.");
         validarObrigatorio(numero, "Informe o número.");
@@ -238,11 +252,13 @@ public class OngService {
             ong.setCnpjHash(cnpjHash);
             ong.setTelefone(aesCryptoUtil.encrypt(telefone));
             ong.setTelefoneHash(telefoneHash);
+
             ong.setInstagram(
                 instagram == null || instagram.isBlank()
                     ? null
                     : instagram.trim()
             );
+
             ong.setUsuario(usuario);
 
             // Salva a descrição curta.
@@ -259,14 +275,17 @@ public class OngService {
 
             // Cria o endereço e vincula os dois lados.
             Endereco endereco = new Endereco();
+
             endereco.setCep(cepNormalizado);
             endereco.setLogradouro(logradouro.trim());
             endereco.setNumero(numero.trim());
+
             endereco.setComplemento(
                 complemento == null || complemento.isBlank()
                     ? null
                     : complemento.trim()
             );
+
             endereco.setBairro(bairro.trim());
             endereco.setCidade(cidade.trim());
             endereco.setEstado(uf);
@@ -282,6 +301,7 @@ public class OngService {
 
             // Salva as imagens e registra os caminhos no banco.
             for (int i = 0; i < imagens.size(); i++) {
+
                 String nomeArquivo =
                     fileStorageService.salvarArquivo(imagens.get(i));
 
@@ -319,6 +339,7 @@ public class OngService {
             return converterParaDTO(ongSalva);
 
         } catch (RuntimeException e) {
+
             // Remove arquivos se o cadastro não for concluído.
             for (String nomeArquivo : arquivosSalvos) {
                 try {
@@ -344,6 +365,186 @@ public class OngService {
     public OngResponseDTO buscarPorId(Long id) {
         Ong ong = buscarEntidadePorId(id);
         return converterParaDTO(ong);
+    }
+
+    // Busca a ONG pertencente ao usuário autenticado.
+    @Transactional(readOnly = true)
+    public Optional<OngMinhaResponseDTO> buscarMinhaOng(
+            String emailUsuario) {
+
+        // Identifica o usuário pela autenticação.
+        Usuario usuario = usuarioRepository.findByEmail(emailUsuario)
+            .orElseThrow(() ->
+                new RecursoNaoEncontradoException(
+                    "Usuário autenticado não encontrado."
+                )
+            );
+
+        // Busca somente a ONG vinculada à conta.
+        return ongRepository.findByUsuarioIdUsuario(
+                usuario.getIdUsuario()
+            )
+            .map(ong -> {
+
+                // Considera a solicitação com maior ID como a mais recente.
+                Optional<Solicitacao> ultima =
+                    solicitacaoRepository.findByOngIdOng(
+                            ong.getIdOng()
+                        )
+                        .stream()
+                        .max(Comparator.comparing(
+                            (Solicitacao solicitacao) -> solicitacao.getIdSolicitacao()
+                        ));
+
+                // Monta o endereço da organização.
+                Endereco endereco = ong.getEndereco();
+
+                EnderecoResponseDTO enderecoDTO =
+                    endereco == null
+                        ? null
+                        : new EnderecoResponseDTO(
+                            endereco.getIdEndereco(),
+                            endereco.getCep(),
+                            endereco.getLogradouro(),
+                            endereco.getNumero(),
+                            endereco.getComplemento(),
+                            endereco.getBairro(),
+                            endereco.getCidade(),
+                            endereco.getEstado(),
+                            ong.getIdOng()
+                        );
+
+                // Monta as descrições.
+                List<DescricaoResponseDTO> descricoes =
+                    ong.getDescricoes().stream()
+                        .map(descricao ->
+                            new DescricaoResponseDTO(
+                                descricao.getIdDescricao(),
+                                descricao.getTexto(),
+                                descricao.getTipoDescricao(),
+                                ong.getIdOng()
+                            )
+                        )
+                        .collect(Collectors.toList());
+
+                // Monta as imagens.
+                List<ImagemResponseDTO> imagens =
+                    ong.getImagens().stream()
+                        .map(imagem ->
+                            new ImagemResponseDTO(
+                                imagem.getIdImagem(),
+                                imagem.getCaminho(),
+                                imagem.getTextoAlternativo(),
+                                ong.getIdOng()
+                            )
+                        )
+                        .collect(Collectors.toList());
+
+                // Monta as categorias.
+                List<OngCategoriaResponseDTO> categorias =
+                    ong.getCategorias().stream()
+                        .map(associacao ->
+                            new OngCategoriaResponseDTO(
+                                associacao.getIdOngCategoria(),
+                                ong.getIdOng(),
+                                ong.getNome(),
+                                associacao.getCategoria()
+                                    .getIdCategoria(),
+                                associacao.getCategoria()
+                                    .getNome()
+                            )
+                        )
+                        .collect(Collectors.toList());
+
+                // Retorna os dados da ONG e da última solicitação.
+                return new OngMinhaResponseDTO(
+                    ong.getIdOng(),
+                    ong.getNome(),
+                    aesCryptoUtil.decrypt(ong.getCnpj()),
+                    aesCryptoUtil.decrypt(ong.getTelefone()),
+                    ong.getInstagram(),
+                    enderecoDTO,
+                    descricoes,
+                    imagens,
+                    categorias,
+                    ultima.map(item ->
+                        item.getStatus().getNome()
+                    ).orElse(null),
+                    ultima.map(
+                        solicitacao -> solicitacao.getDataAnalise()
+                    ).orElse(null),
+                    ultima.map(
+                        solicitacao -> solicitacao.getMotivoRejeicao()
+                    ).orElse(null)
+                );
+            });
+    }
+
+    // Consulta os dados completos para análise administrativa.
+    // O endpoint deve permitir acesso somente a administradores.
+    @Transactional(readOnly = true)
+    public OngDetalhesAdminResponseDTO buscarDetalhesAdmin(Long id) {
+
+        Ong ong = buscarEntidadePorId(id);
+
+        Endereco endereco = ong.getEndereco();
+
+        EnderecoResponseDTO enderecoDTO = endereco == null
+            ? null
+            : new EnderecoResponseDTO(
+                endereco.getIdEndereco(),
+                endereco.getCep(),
+                endereco.getLogradouro(),
+                endereco.getNumero(),
+                endereco.getComplemento(),
+                endereco.getBairro(),
+                endereco.getCidade(),
+                endereco.getEstado(),
+                ong.getIdOng()
+            );
+
+        List<DescricaoResponseDTO> descricoes =
+            ong.getDescricoes().stream()
+                .map(descricao -> new DescricaoResponseDTO(
+                    descricao.getIdDescricao(),
+                    descricao.getTexto(),
+                    descricao.getTipoDescricao(),
+                    ong.getIdOng()
+                ))
+                .collect(Collectors.toList());
+
+        List<ImagemResponseDTO> imagens =
+            ong.getImagens().stream()
+                .map(imagem -> new ImagemResponseDTO(
+                    imagem.getIdImagem(),
+                    imagem.getCaminho(),
+                    imagem.getTextoAlternativo(),
+                    ong.getIdOng()
+                ))
+                .collect(Collectors.toList());
+
+        List<OngCategoriaResponseDTO> categorias =
+            ong.getCategorias().stream()
+                .map(associacao -> new OngCategoriaResponseDTO(
+                    associacao.getIdOngCategoria(),
+                    ong.getIdOng(),
+                    ong.getNome(),
+                    associacao.getCategoria().getIdCategoria(),
+                    associacao.getCategoria().getNome()
+                ))
+                .collect(Collectors.toList());
+
+        return new OngDetalhesAdminResponseDTO(
+            ong.getIdOng(),
+            ong.getNome(),
+            aesCryptoUtil.decrypt(ong.getCnpj()),
+            aesCryptoUtil.decrypt(ong.getTelefone()),
+            ong.getInstagram(),
+            enderecoDTO,
+            descricoes,
+            imagens,
+            categorias
+        );
     }
 
     // Atualiza uma ONG existente.
@@ -462,6 +663,7 @@ public class OngService {
 
     // Valida os dígitos verificadores do CNPJ.
     private void validarCnpj(String cnpj) {
+
         if (cnpj == null
                 || !cnpj.matches("\\d{14}")
                 || cnpj.chars().distinct().count() == 1) {
@@ -484,6 +686,7 @@ public class OngService {
         int primeiro = calcularDigitoCnpj(base, pesosPrimeiro);
 
         base += primeiro;
+
         int segundo = calcularDigitoCnpj(base, pesosSegundo);
 
         if (cnpj.charAt(12) - '0' != primeiro
@@ -498,6 +701,7 @@ public class OngService {
 
     // Calcula um dígito verificador do CNPJ.
     private int calcularDigitoCnpj(String base, int[] pesos) {
+
         int soma = 0;
 
         for (int i = 0; i < pesos.length; i++) {
@@ -505,6 +709,7 @@ public class OngService {
         }
 
         int resto = soma % 11;
+
         return resto < 2 ? 0 : 11 - resto;
     }
 

@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter, Routes, Route } from "react-router";
 import "./styles/style.css";
 
-import { AuthProvider } from "./context/AuthContext.jsx";
+import { AuthProvider } from "./contexts/AuthContext.jsx";
 import RotaProtegida from "./routes/RotaProtegida.jsx";
 import AppLayout from "./layouts/AppLayout";
 import Home from "./pages/Home";
@@ -29,41 +29,90 @@ createRoot(document.getElementById("root")).render(
       <AuthProvider>
         <Routes>
           <Route element={<AppLayout />}>
+            {/* Páginas públicas */}
             <Route path="/" element={<Home />} />
             <Route path="/detalhes" element={<Detalhes />} />
-            <Route path="/minha-organizacao" element={<Detalhes />} />
             <Route path="/impacto" element={<Impacto />} />
             <Route path="/login" element={<Login />} />
             <Route path="/feed" element={<Feed />} />
             <Route path="/formulario-post" element={<FormularioPost />} />
+            <Route path="/Cadastro" element={<CadastroUsuario />} />
+
+            {/* Páginas exclusivas do usuário comum */}
+            <Route
+              path="/minha-organizacao"
+              element={
+                <RotaProtegida funcoesPermitidas={["USUARIO"]}>
+                  <Detalhes />
+                </RotaProtegida>
+              }
+            />
+
             <Route
               path="/formulario-ong"
               element={
-                <RotaProtegida>
+                <RotaProtegida funcoesPermitidas={["USUARIO"]}>
                   <FormularioOng />
                 </RotaProtegida>
               }
             />
-            <Route path="/Cadastro" element={<CadastroUsuario />} />
-            <Route path="/editar-ong" element={<EditarOng />} />
-            <Route path="/editar-usuario" element={<EditarUsuario />} />
-            <Route path="/alterar-senha" element={<AlterarSenha />} />
+
+            <Route
+              path="/editar-ong"
+              element={
+                <RotaProtegida funcoesPermitidas={["USUARIO"]}>
+                  <EditarOng />
+                </RotaProtegida>
+              }
+            />
+
             <Route
               path="/solicitacao-exclusao-ong"
-              element={<SolicitacaoExclusaoOng />}
+              element={
+                <RotaProtegida funcoesPermitidas={["USUARIO"]}>
+                  <SolicitacaoExclusaoOng />
+                </RotaProtegida>
+              }
             />
+
+            {/* Páginas disponíveis para qualquer usuário autenticado */}
+            <Route
+              path="/editar-usuario"
+              element={
+                <RotaProtegida>
+                  <EditarUsuario />
+                </RotaProtegida>
+              }
+            />
+
+            <Route
+              path="/alterar-senha"
+              element={
+                <RotaProtegida>
+                  <AlterarSenha />
+                </RotaProtegida>
+              }
+            />
+
+            {/* Toda a área administrativa exige a função administrador. */}
             <Route
               path="/admin/solicitacoes"
-              element={<AdminSolicitacoesLayout />}
+              element={
+                <RotaProtegida funcoesPermitidas={["ADMINISTRADOR"]}>
+                  <AdminSolicitacoesLayout />
+                </RotaProtegida>
+              }
             >
               <Route
                 index
                 element={<AdminSolicitacoesPage status="pendente" />}
               />
+
               <Route
                 path="aprovadas"
                 element={<AdminSolicitacoesPage status="aprovada" />}
               />
+
               <Route
                 path="reprovadas"
                 element={<AdminSolicitacoesPage status="reprovada" />}

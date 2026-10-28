@@ -1,9 +1,11 @@
+
 package br.edu.ifsp.entrecausas.controller;
 
 import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -17,6 +19,7 @@ import jakarta.validation.Valid;
 import br.edu.ifsp.entrecausas.dto.SolicitacaoAnaliseDTO;
 import br.edu.ifsp.entrecausas.dto.SolicitacaoCriacaoDTO;
 import br.edu.ifsp.entrecausas.dto.SolicitacaoResponseDTO;
+import br.edu.ifsp.entrecausas.dto.StatusSolicitacaoResponseDTO;
 import br.edu.ifsp.entrecausas.service.SolicitacaoService;
 
 // Controller responsável pelas solicitações de ONG.
@@ -77,6 +80,16 @@ public class SolicitacaoController {
         );
     }
 
+    // Lista os status disponíveis para análise.
+    @GetMapping("/status-opcoes")
+    public ResponseEntity<List<StatusSolicitacaoResponseDTO>>
+            listarStatus() {
+
+        return ResponseEntity.ok(
+            solicitacaoService.listarStatus()
+        );
+    }
+
     // Lista solicitações abertas por um usuário.
     @GetMapping("/usuario/{idUsuario}")
     public ResponseEntity<List<SolicitacaoResponseDTO>>
@@ -84,9 +97,7 @@ public class SolicitacaoController {
                 @PathVariable Long idUsuario) {
 
         return ResponseEntity.ok(
-            solicitacaoService.listarPorUsuario(
-                idUsuario
-            )
+            solicitacaoService.listarPorUsuario(idUsuario)
         );
     }
 
@@ -105,10 +116,15 @@ public class SolicitacaoController {
     @PutMapping("/{id}/analise")
     public ResponseEntity<SolicitacaoResponseDTO> analisar(
             @PathVariable Long id,
-            @Valid @RequestBody SolicitacaoAnaliseDTO dto) {
+            @Valid @RequestBody SolicitacaoAnaliseDTO dto,
+            Authentication authentication) {
 
         SolicitacaoResponseDTO response =
-            solicitacaoService.analisar(id, dto);
+            solicitacaoService.analisar(
+                id,
+                dto,
+                authentication.getName()
+            );
 
         return ResponseEntity.ok(response);
     }

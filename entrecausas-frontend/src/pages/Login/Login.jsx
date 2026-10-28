@@ -1,8 +1,7 @@
-
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 
-import { useAuth } from "../../context/AuthContext.jsx";
+import { useAuth } from "../../contexts/AuthContext.jsx";
 import CampoFormulario from "../../components/Form/CampoFormulario";
 import OngsCarrosel from "../../components/Ongs/OngsCarrossel";
 import Footer from "../../components/Footer/Footer";
@@ -13,6 +12,64 @@ const imagens = [
   "../../img/carrossel/instituto-nosso-lar/fotografia-Instituto-Nosso-Lar-Vertical-Mobile.jpg",
   "../../img/carrossel/sos-animais/fotografia-SOS-Animais-Vertical-Mobile.jpg",
 ];
+
+// Normaliza a função retornada pelo backend.
+function normalizarFuncao(funcao) {
+  return typeof funcao === "string"
+    ? funcao
+        .trim()
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+    : "";
+}
+
+// Define o destino padrão conforme a função do usuário.
+function obterDestinoPorFuncao(funcao) {
+  if (funcao === "administrador") {
+    return "/admin/solicitacoes";
+  }
+
+  // A página inicial é o destino provisório do usuário comum.
+  if (funcao === "usuario") {
+    return "/";
+  }
+
+  return "/login";
+}
+
+// Evita retornar a páginas incompatíveis com o perfil.
+function destinoPermitido(caminho, funcao) {
+  if (
+    typeof caminho !== "string" ||
+    !caminho.startsWith("/") ||
+    caminho.startsWith("//")
+  ) {
+    return false;
+  }
+
+  // A área administrativa é exclusiva do administrador.
+  if (caminho === "/admin" || caminho.startsWith("/admin/")) {
+    return funcao === "administrador";
+  }
+
+  // Estas páginas são destinadas ao usuário comum.
+  const caminhosDeUsuario = [
+    "/formulario-ong",
+    "/editar-ong",
+    "/solicitacao-exclusao-ong",
+  ];
+
+  const caminhoRestrito = caminhosDeUsuario.some(
+    (rota) => caminho === rota || caminho.startsWith(`${rota}/`),
+  );
+
+  if (caminhoRestrito) {
+    return funcao === "usuario";
+  }
+
+  return true;
+}
 
 function Login() {
   const navigate = useNavigate();
@@ -32,9 +89,7 @@ function Login() {
   useEffect(() => {
     const intervalo = setInterval(() => {
       setImagemAtual((imagemAnterior) =>
-        imagemAnterior === imagens.length - 1
-          ? 0
-          : imagemAnterior + 1
+        imagemAnterior === imagens.length - 1 ? 0 : imagemAnterior + 1,
       );
     }, 5000);
 
@@ -61,21 +116,39 @@ function Login() {
         }),
       });
 
+      // Confere se o backend retornou os dados esperados.
+      if (!usuario || !usuario.funcaoNome) {
+        throw new Error("Não foi possível identificar o perfil da conta.");
+      }
+
+      // Identifica a função retornada pelo backend.
+      const funcao = normalizarFuncao(usuario.funcaoNome);
+
+      // Aceita somente os perfis definidos no projeto.
+      if (!["administrador", "usuario"].includes(funcao)) {
+        throw new Error("O perfil da conta não é reconhecido pelo sistema.");
+      }
+
       // Atualiza o usuário autenticado no React.
       setUsuario(usuario);
 
       // Limpa a senha após o login.
       setSenha("");
 
-      // Retorna à página solicitada ou abre o formulário de ONG.
-      const destino =
-        location.state?.from?.pathname || "/formulario-ong";
+      // Define o destino padrão do perfil.
+      const destinoPadrao = obterDestinoPorFuncao(funcao);
+
+      // Recupera a página solicitada antes do login.
+      const paginaSolicitada = location.state?.from?.pathname;
+
+      // Só retorna à página anterior se o perfil puder acessá-la.
+      const destino = destinoPermitido(paginaSolicitada, funcao)
+        ? paginaSolicitada
+        : destinoPadrao;
 
       navigate(destino, { replace: true });
     } catch (error) {
-      setErro(
-        error.message || "Não foi possível realizar o login."
-      );
+      setErro(error.message || "Não foi possível realizar o login.");
     } finally {
       setCarregando(false);
     }
@@ -84,10 +157,7 @@ function Login() {
   return (
     <main>
       <section className="relative min-h-screen overflow-hidden">
-        {/* ========================= */}
         {/* CARROSSEL DE FUNDO */}
-        {/* ========================= */}
-
         <div className="absolute inset-0">
           {imagens.map((imagem, index) => (
             <img
@@ -112,10 +182,7 @@ function Login() {
         {/* ESCURECIMENTO */}
         <div className="absolute inset-0 bg-black/65"></div>
 
-        {/* ========================= */}
         {/* CONTEÚDO */}
-        {/* ========================= */}
-
         <div
           className="
             hero
@@ -135,10 +202,7 @@ function Login() {
               lg:flex-row-reverse
             "
           >
-            {/* ========================= */}
             {/* TEXTO */}
-            {/* ========================= */}
-
             <div className="flex-1 text-center lg:text-left">
               <div className="mb-5 flex items-center justify-center gap-3 lg:justify-start">
                 <span className="h-[3px] w-10 rounded-full bg-primary"></span>
@@ -203,10 +267,7 @@ function Login() {
               </div>
             </div>
 
-            {/* ========================= */}
             {/* CARD LOGIN */}
-            {/* ========================= */}
-
             <div
               className="
                 card
@@ -305,10 +366,7 @@ function Login() {
           </div>
         </div>
 
-        {/* ========================= */}
         {/* INDICADORES DO CARROSSEL */}
-        {/* ========================= */}
-
         <div
           className="
             absolute
