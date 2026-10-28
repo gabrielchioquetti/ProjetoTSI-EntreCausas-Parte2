@@ -1,7 +1,6 @@
 
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
-import Header from "../../components/Header/Header";
 import CadastroOng from "../../components/FormularioOng/CadastroOng";
 import DescricaoOng from "../../components/FormularioOng/DescricaoOng";
 import EnderecoOng from "../../components/FormularioOng/EnderecoOng";
@@ -173,8 +172,6 @@ function FormularioPostPage() {
       </a>
 
       <div id="site">
-        <Header />
-
         <main
           id="conteudo-principal"
           className="relative overflow-hidden py-8 lg:py-10"

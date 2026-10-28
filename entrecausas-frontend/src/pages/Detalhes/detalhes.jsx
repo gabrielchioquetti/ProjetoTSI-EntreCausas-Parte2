@@ -1,6 +1,6 @@
 import { useMemo } from "react";
+import { useLocation } from "react-router";
 
-import Header from "../../components/Header/Header";
 import DetalhesOng from "../../components/DetalhesOng/DetalhesOng";
 import listaOngs from "../../data/ongs";
 import Footer from "../../components/Footer/Footer";
@@ -11,9 +11,13 @@ import UserWay from "../../components/Acessibilidade/UserWay";
 import Ongs from "../../components/Ongs/Ongs";
 
 function Detalhes() {
-  const parametros = new URLSearchParams(window.location.search);
+  const { pathname, search } = useLocation();
+  const parametros = new URLSearchParams(search);
 
-  const id = Number(parametros.get("id"));
+  const id =
+    pathname === "/minha-organizacao"
+      ? 3
+      : Number(parametros.get("id"));
 
   const ong = useMemo(() => {
     return listaOngs.find((item) => item.id === id);
@@ -43,13 +47,11 @@ function Detalhes() {
       </a>
 
       <div id="site">
-        <Header />
-
         <div id="nav-hover-zone" aria-hidden="true"></div>
 
         {/* ÚNICO MAIN DA PÁGINA */}
         <main id="conteudo-principal">
-          <DetalhesOng key={ong.id} ong={ong} />
+          <DetalhesOng key={ong?.id ?? "not-found"} ong={ong} />
         </main>
         <Ongs />
         <Footer />

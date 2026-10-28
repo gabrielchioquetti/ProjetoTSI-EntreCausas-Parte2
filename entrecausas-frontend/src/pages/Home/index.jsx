@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
-import Header from "../../components/Header/Header";
 import Hero from "../../components/Hero/Hero";
 import Ongs from "../../components/Ongs/Ongs";
 import Impacto from "../../components/Impacto/Impacto";
@@ -73,8 +72,6 @@ function Home() {
 
   return (
     <div id="site">
-      <Header />
-
       <main>
         {cadastroOngResultado &&
           resultadoCadastroAguardando === cadastroOngResultado && (
@@ -109,7 +106,6 @@ function Home() {
                   />
                 )}
               </svg>
-
               <span>{cadastroOngResultado.mensagem}</span>
 
               <button

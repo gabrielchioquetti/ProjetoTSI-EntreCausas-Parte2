@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 
-import Header from "../../components/Header/Header";
 import FormularioPost from "../../components/FormularioPost/FormularioPost";
 import Footer from "../../components/Footer/Footer";
 import OngsCarrossel from "../../components/Ongs/OngsCarrossel";
@@ -59,8 +58,6 @@ function FormularioPostPage() {
       </a>
 
       <div id="site">
-        <Header />
-
         <main
           id="conteudo-principal"
           className="relative overflow-hidden py-16 lg:py-20"

@@ -1,10 +1,8 @@
 import { useEffect, useState } from "react";
-
 import CampoFormulario from "../../components/Form/CampoFormulario";
 import CampoDocumento from "../../components/Form/CampoDocumento";
 import CampoTelefone from "../../components/Form/CampoTelefone";
 
-import Header from "../../components/Header/Header";
 import OngsCarrosel from "../../components/Ongs/OngsCarrossel";
 import Footer from "../../components/Footer/Footer";
 
@@ -140,8 +138,6 @@ function CadastroUsuario() {
 
   return (
     <main>
-      <Header />
-
       <section className="relative min-h-screen overflow-hidden">
         {/* ========================= */}
         {/* CARROSSEL DE FUNDO */}

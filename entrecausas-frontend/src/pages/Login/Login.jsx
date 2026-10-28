@@ -4,7 +4,6 @@ import { useLocation, useNavigate } from "react-router";
 
 import { useAuth } from "../../context/AuthContext.jsx";
 import CampoFormulario from "../../components/Form/CampoFormulario";
-import Header from "../../components/Header/Header";
 import OngsCarrosel from "../../components/Ongs/OngsCarrossel";
 import Footer from "../../components/Footer/Footer";
 import { apiFetch } from "../../services/Api.js";
@@ -84,8 +83,6 @@ function Login() {
 
   return (
     <main>
-      <Header />
-
       <section className="relative min-h-screen overflow-hidden">
         {/* ========================= */}
         {/* CARROSSEL DE FUNDO */}

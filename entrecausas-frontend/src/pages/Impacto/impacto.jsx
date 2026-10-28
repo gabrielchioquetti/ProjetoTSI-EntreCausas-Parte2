@@ -1,4 +1,3 @@
-import Header from "../../components/Header/Header";
 import Hero from "../../components/Hero/Hero";
 import ImpactoSession from "../../components/Impacto/Impacto";
 import Footer from "../../components/Footer/Footer";
@@ -54,8 +53,6 @@ function Impacto() {
       >
         Pular para o conteúdo principal
       </a>
-
-      <Header />
 
       <main id="conteudo-principal">
         <ImpactoSession />
