@@ -1,3 +1,4 @@
+
 package br.edu.ifsp.entrecausas.controller;
 
 import br.edu.ifsp.entrecausas.dto.AlterarSenhaDTO;
@@ -7,11 +8,15 @@ import br.edu.ifsp.entrecausas.dto.UsuarioUpdateDTO;
 
 import br.edu.ifsp.entrecausas.service.UsuarioService;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+
+import org.springframework.security.core.Authentication;
 
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -32,12 +37,14 @@ import java.util.List;
 public class UsuarioController {
 
     private final UsuarioService usuarioService;
+    private final AuthController authController;
 
-    // Injeta o serviço pelo construtor.
     public UsuarioController(
-            UsuarioService usuarioService) {
+            UsuarioService usuarioService,
+            AuthController authController) {
 
         this.usuarioService = usuarioService;
+        this.authController = authController;
     }
 
     // Cadastra um novo usuário.
@@ -45,9 +52,8 @@ public class UsuarioController {
         consumes = MediaType.MULTIPART_FORM_DATA_VALUE
     )
     public ResponseEntity<UsuarioResponseDTO> cadastrar(
-
-            @RequestPart("usuario")
-            @Valid UsuarioRequestDTO dto,
+            @Valid @RequestPart("usuario")
+            UsuarioRequestDTO dto,
 
             @RequestPart(
                 value = "foto",
@@ -55,20 +61,18 @@ public class UsuarioController {
             )
             MultipartFile foto) {
 
-        UsuarioResponseDTO response =
-            usuarioService.cadastrar(
-                dto,
-                foto
-            );
+        UsuarioResponseDTO usuario =
+            usuarioService.cadastrar(dto, foto);
 
         return ResponseEntity
             .status(HttpStatus.CREATED)
-            .body(response);
+            .body(usuario);
     }
 
     // Lista todos os usuários.
     @GetMapping
-    public ResponseEntity<List<UsuarioResponseDTO>> listar() {
+    public ResponseEntity<List<UsuarioResponseDTO>>
+            listarTodos() {
 
         return ResponseEntity.ok(
             usuarioService.listarTodos()
@@ -77,73 +81,73 @@ public class UsuarioController {
 
     // Busca um usuário pelo ID.
     @GetMapping("/{id}")
-    public ResponseEntity<UsuarioResponseDTO> buscarPorId(
-            @PathVariable Long id) {
+    public ResponseEntity<UsuarioResponseDTO>
+            buscarPorId(@PathVariable Long id) {
 
         return ResponseEntity.ok(
             usuarioService.buscarPorId(id)
         );
     }
 
-    // Atualiza os dados do perfil.
+    // Atualiza os dados do usuário autenticado.
     @PutMapping(
         value = "/{id}",
         consumes = MediaType.MULTIPART_FORM_DATA_VALUE
     )
     public ResponseEntity<UsuarioResponseDTO> atualizar(
-
             @PathVariable Long id,
 
-            @RequestPart("usuario")
-            @Valid UsuarioUpdateDTO dto,
+            @Valid @RequestPart("usuario")
+            UsuarioUpdateDTO dto,
 
             @RequestPart(
                 value = "foto",
                 required = false
             )
-            MultipartFile foto) {
+            MultipartFile foto,
 
-        UsuarioResponseDTO response =
-            usuarioService.atualizar(
-                id,
-                dto,
-                foto
+            Authentication autenticacao,
+
+            HttpServletRequest request,
+            HttpServletResponse response) {
+
+        // O serviço verifica se o usuário é o proprietário.
+        UsuarioResponseDTO usuarioAtualizado =
+            usuarioService.atualizar(id, dto, foto);
+
+        // Se o e-mail mudou, atualiza a autenticação.
+        if (autenticacao != null
+                && !autenticacao.getName().equals(
+                    usuarioAtualizado.email())) {
+
+            authController.atualizarAutenticacao(
+                usuarioAtualizado,
+                request,
+                response
             );
+        }
 
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(usuarioAtualizado);
     }
 
-    // Altera a senha do usuário.
-    @PutMapping(
-        value = "/{id}/senha",
-        consumes = MediaType.APPLICATION_JSON_VALUE
-    )
+    // Altera a senha do próprio usuário.
+    @PutMapping("/{id}/senha")
     public ResponseEntity<Void> alterarSenha(
-
             @PathVariable Long id,
+            @Valid @RequestBody AlterarSenhaDTO dto) {
 
-            @RequestBody
-            @Valid AlterarSenhaDTO dto) {
+        usuarioService.alterarSenha(id, dto);
 
-        usuarioService.alterarSenha(
-            id,
-            dto
-        );
-
-        return ResponseEntity
-            .noContent()
-            .build();
+        return ResponseEntity.noContent().build();
     }
 
-    // Remove um usuário.
+    // Exclui a própria conta.
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deletar(
             @PathVariable Long id) {
 
         usuarioService.deletar(id);
 
-        return ResponseEntity
-            .noContent()
-            .build();
+        return ResponseEntity.noContent().build();
     }
 }

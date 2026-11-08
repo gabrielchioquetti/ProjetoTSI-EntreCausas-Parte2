@@ -16,5 +16,7 @@ public record OngMinhaResponseDTO(
     List<OngCategoriaResponseDTO> categorias,
     String statusSolicitacao,
     LocalDateTime dataAnalise,
-    String motivoRejeicao
+    String motivoRejeicao,
+    boolean publicada,
+    String tipoSolicitacao
 ) {}

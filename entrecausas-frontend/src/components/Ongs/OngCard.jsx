@@ -1,20 +1,26 @@
 const iconesCategorias = {
   Educacao: "fa-solid fa-graduation-cap",
+  Educação: "fa-solid fa-graduation-cap",
   Solidariedade: "fa-solid fa-hand-holding-heart",
   Cultura: "fa-solid fa-people-group",
   Animais: "fa-solid fa-paw",
   MeioAmbiente: "fa-solid fa-leaf",
+  "Meio Ambiente": "fa-solid fa-leaf",
   Saude: "fa-solid fa-heart-pulse",
+  Saúde: "fa-solid fa-heart-pulse",
   Esporte: "fa-solid fa-futbol",
 };
 
 const nomesCategorias = {
   Educacao: "Educação",
+  Educação: "Educação",
   Solidariedade: "Solidariedade",
   Cultura: "Cultura",
   Animais: "Animais",
   MeioAmbiente: "Meio Ambiente",
+  "Meio Ambiente": "Meio Ambiente",
   Saude: "Saúde",
+  Saúde: "Saúde",
   Esporte: "Esporte",
 };
 
@@ -67,6 +73,7 @@ function OngCard({ ong }) {
             group-hover:scale-105
           "
           onError={(event) => {
+            event.currentTarget.onerror = null;
             event.currentTarget.src = "/img/default/ongs.png";
           }}
         />

@@ -1,16 +1,110 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import OngCard from "./OngCard";
 
-import listaOngs from "../../data/ongs";
+import { apiFetch } from "../../services/Api";
+
+// =========================================================
+// ADAPTAÇÃO DOS DADOS DA API
+// =========================================================
+
+function adaptarOng(dados) {
+  const categorias = (dados.categorias || [])
+    .map((categoria) => categoria.nomeCategoria)
+    .filter(Boolean);
+
+  const descricoes = dados.descricoes || [];
+
+  const descricaoCurta = descricoes.find(
+    (descricao) => descricao.tipoDescricao === "RESUMO",
+  );
+
+  const descricaoCompleta = descricoes.find(
+    (descricao) => descricao.tipoDescricao === "SOBRE",
+  );
+
+  const endereco = dados.endereco;
+
+  const localizacao = endereco
+    ? [endereco.cidade, endereco.estado].filter(Boolean).join(" - ")
+    : "";
+
+  const API_URL = (
+    import.meta.env.VITE_API_URL || "http://localhost:8080"
+  ).replace(/\/$/, "");
+
+  const imagens = (dados.imagens || []).map((imagem) => ({
+    src: imagem.caminho
+      ? `${API_URL}${imagem.caminho}`
+      : "/img/default/ongs.png",
+    alt: imagem.textoAlternativo || `Imagem da ONG ${dados.nome}`,
+  }));
+
+  return {
+    id: dados.idOng,
+    nome: dados.nome,
+    instagram: dados.instagram,
+    categoriaPrincipal: categorias[0] || "",
+    categorias,
+    descricao: descricaoCurta?.texto || descricaoCompleta?.texto || "",
+    descricaoCompleta: descricaoCompleta?.texto || "",
+    localizacao,
+    imagens,
+  };
+}
 
 function Ongs() {
   // =========================================================
   // ESTADOS
   // =========================================================
 
+  const [listaOngs, setListaOngs] = useState([]);
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState("");
+
   const [termoBusca, setTermoBusca] = useState("");
   const [categoriaSelecionada, setCategoriaSelecionada] = useState("");
+
+  // =========================================================
+  // CARREGAMENTO DAS ONGS
+  // =========================================================
+
+  useEffect(() => {
+    let ativo = true;
+
+    async function carregarOngs() {
+      try {
+        setCarregando(true);
+        setErro("");
+
+        const dados = await apiFetch("/api/ongs");
+
+        if (!ativo) return;
+
+        const ongs = Array.isArray(dados)
+          ? dados.map(adaptarOng)
+          : [];
+
+        setListaOngs(ongs);
+      } catch (error) {
+        if (!ativo) return;
+
+        setErro(
+          error.message || "Não foi possível carregar as ONGs.",
+        );
+      } finally {
+        if (ativo) {
+          setCarregando(false);
+        }
+      }
+    }
+
+    carregarOngs();
+
+    return () => {
+      ativo = false;
+    };
+  }, []);
 
   // =========================================================
   // CATEGORIAS DISPONÍVEIS
@@ -19,10 +113,12 @@ function Ongs() {
   const categoriasDisponiveis = useMemo(() => {
     return [
       ...new Set(
-        listaOngs.map((ong) => ong.categoriaPrincipal).filter(Boolean),
+        listaOngs
+          .flatMap((ong) => ong.categorias || [])
+          .filter(Boolean),
       ),
     ];
-  }, []);
+  }, [listaOngs]);
 
   // =========================================================
   // FILTRO DE ONGS
@@ -34,7 +130,8 @@ function Ongs() {
     return listaOngs.filter((ong) => {
       const nome = ong.nome?.toLowerCase() || "";
       const descricao = ong.descricao?.toLowerCase() || "";
-      const categoriaPrincipal = ong.categoriaPrincipal?.toLowerCase() || "";
+      const categoriaPrincipal =
+        ong.categoriaPrincipal?.toLowerCase() || "";
 
       const categorias = ong.categorias || [];
 
@@ -59,11 +156,11 @@ function Ongs() {
 
       const correspondeCategoria =
         !categoriaSelecionada ||
-        ong.categoriaPrincipal === categoriaSelecionada;
+        categorias.includes(categoriaSelecionada);
 
       return correspondePesquisa && correspondeCategoria;
     });
-  }, [termoBusca, categoriaSelecionada]);
+  }, [listaOngs, termoBusca, categoriaSelecionada]);
 
   // =========================================================
   // LIMPAR FILTROS
@@ -114,7 +211,9 @@ function Ongs() {
 
             <select
               value={categoriaSelecionada}
-              onChange={(event) => setCategoriaSelecionada(event.target.value)}
+              onChange={(event) =>
+                setCategoriaSelecionada(event.target.value)
+              }
               className="select select-bordered w-full rounded-full bg-base-100 sm:w-56"
               aria-label="Filtrar ONGs por categoria"
             >
@@ -198,8 +297,33 @@ function Ongs() {
             lg:grid-cols-3
           "
         >
-          {ongsFiltradas.length > 0 ? (
-            ongsFiltradas.map((ong) => <OngCard key={ong.id} ong={ong} />)
+          {carregando ? (
+            <div className="col-span-full py-16 text-center">
+              <span className="loading loading-spinner loading-lg text-primary"></span>
+
+              <p className="mt-4 text-base-content/60">
+                Carregando organizações...
+              </p>
+            </div>
+          ) : erro ? (
+            <div className="col-span-full py-16 text-center">
+              <i
+                className="fa-solid fa-circle-exclamation mb-4 text-3xl text-primary/40"
+                aria-hidden="true"
+              ></i>
+
+              <h3 className="mb-2 text-xl font-bold text-base-content">
+                Não foi possível carregar as ONGs
+              </h3>
+
+              <p className="text-lg text-base-content/60">
+                {erro}
+              </p>
+            </div>
+          ) : ongsFiltradas.length > 0 ? (
+            ongsFiltradas.map((ong) => (
+              <OngCard key={ong.id} ong={ong} />
+            ))
           ) : (
             /* =================================================
                 ESTADO VAZIO

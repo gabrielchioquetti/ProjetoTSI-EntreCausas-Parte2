@@ -3,6 +3,9 @@ package br.edu.ifsp.entrecausas.service;
 import br.edu.ifsp.entrecausas.exception.ArquivoException;
 
 import org.apache.tika.Tika;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -13,7 +16,10 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.InputStream;
 
+import java.net.MalformedURLException;
+
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
@@ -42,13 +48,16 @@ public class FileStorageService {
     private final Tika tika = new Tika();
 
     // Diretório das imagens.
-    private final Path diretorioUploads =
-        Paths.get("uploads")
-            .toAbsolutePath()
-            .normalize();
+    private final Path diretorioUploads;
 
     // Cria o diretório ao iniciar.
-    public FileStorageService() {
+    // Utiliza UPLOAD_DIR quando configurado.
+    public FileStorageService(
+            @Value("${UPLOAD_DIR:uploads}") String uploadDir) {
+
+        diretorioUploads = Paths.get(uploadDir)
+            .toAbsolutePath()
+            .normalize();
 
         try {
 
@@ -95,18 +104,7 @@ public class FileStorageService {
             UUID.randomUUID() + extensao;
 
         Path caminhoDestino =
-            diretorioUploads
-                .resolve(nomeUnico)
-                .normalize();
-
-        // Impede saída do diretório de uploads.
-        if (!caminhoDestino.getParent()
-                .equals(diretorioUploads)) {
-
-            throw new ArquivoException(
-                "Caminho de arquivo inválido."
-            );
-        }
+            resolverCaminhoSeguro(nomeUnico);
 
         try (InputStream inputStream =
                 arquivo.getInputStream()) {
@@ -120,11 +118,73 @@ public class FileStorageService {
 
         } catch (IOException e) {
 
+            // Remove um arquivo parcialmente gravado.
+            try {
+                Files.deleteIfExists(caminhoDestino);
+            } catch (IOException erroExclusao) {
+                e.addSuppressed(erroExclusao);
+            }
+
             throw new ArquivoException(
                 "Erro ao salvar o arquivo.",
                 e
             );
         }
+    }
+
+    // Carrega uma imagem para entrega autorizada.
+    // A permissão deve ser verificada antes desta chamada.
+    public Resource carregarArquivo(String nomeArquivo) {
+
+        Path caminhoArquivo =
+            resolverCaminhoSeguro(nomeArquivo);
+
+        // Impede a leitura de arquivos inexistentes
+        // ou de links simbólicos.
+        if (!Files.isRegularFile(
+                caminhoArquivo,
+                LinkOption.NOFOLLOW_LINKS)) {
+
+            throw new ArquivoException(
+                "Arquivo não encontrado."
+            );
+        }
+
+        try {
+
+            Resource recurso =
+                new UrlResource(
+                    caminhoArquivo.toUri()
+                );
+
+            if (!recurso.isReadable()) {
+
+                throw new ArquivoException(
+                    "Arquivo não disponível para leitura."
+                );
+            }
+
+            return recurso;
+
+        } catch (MalformedURLException e) {
+
+            throw new ArquivoException(
+                "Não foi possível carregar o arquivo.",
+                e
+            );
+        }
+    }
+
+    // Identifica o tipo de conteúdo pelo nome validado.
+    public String obterTipoConteudo(String nomeArquivo) {
+
+        validarNomeArquivo(nomeArquivo);
+
+        if (nomeArquivo.endsWith(".jpg")) {
+            return "image/jpeg";
+        }
+
+        return "image/png";
     }
 
     // Remove uma imagem armazenada.
@@ -138,18 +198,7 @@ public class FileStorageService {
         }
 
         Path caminhoArquivo =
-            diretorioUploads
-                .resolve(nomeArquivo)
-                .normalize();
-
-        // Impede acesso fora do diretório.
-        if (!caminhoArquivo.getParent()
-                .equals(diretorioUploads)) {
-
-            throw new ArquivoException(
-                "Caminho de arquivo inválido."
-            );
-        }
+            resolverCaminhoSeguro(nomeArquivo);
 
         try {
 
@@ -162,6 +211,48 @@ public class FileStorageService {
             throw new ArquivoException(
                 "Erro ao remover o arquivo.",
                 e
+            );
+        }
+    }
+
+    // Resolve o caminho sem permitir acesso fora de uploads.
+    private Path resolverCaminhoSeguro(
+            String nomeArquivo) {
+
+        validarNomeArquivo(nomeArquivo);
+
+        Path caminhoArquivo =
+            diretorioUploads
+                .resolve(nomeArquivo)
+                .normalize();
+
+        // Impede saída do diretório de uploads.
+        if (!caminhoArquivo.getParent()
+                .equals(diretorioUploads)) {
+
+            throw new ArquivoException(
+                "Caminho de arquivo inválido."
+            );
+        }
+
+        return caminhoArquivo;
+    }
+
+    // Aceita somente nomes UUID gerados pelo armazenamento.
+    private void validarNomeArquivo(
+            String nomeArquivo) {
+
+        if (nomeArquivo == null
+                || !nomeArquivo.matches(
+                    "^[0-9a-fA-F]{8}-"
+                    + "[0-9a-fA-F]{4}-"
+                    + "[0-9a-fA-F]{4}-"
+                    + "[0-9a-fA-F]{4}-"
+                    + "[0-9a-fA-F]{12}\\.(jpg|png)$"
+                )) {
+
+            throw new ArquivoException(
+                "Nome de arquivo inválido."
             );
         }
     }

@@ -19,13 +19,13 @@ const configuracaoStatus = {
   },
   aprovada: {
     titulo: "Solicitações Aprovadas",
-    descricao: "Organizações com solicitação de cadastro aprovada.",
+    descricao: "Solicitações de cadastro e edição aprovadas.",
     label: "Aprovada",
     classe: "border-green-200 bg-green-50 text-green-800",
   },
   reprovada: {
     titulo: "Solicitações Reprovadas",
-    descricao: "Organizações com solicitação de cadastro reprovada.",
+    descricao: "Solicitações de cadastro e edição reprovadas.",
     label: "Reprovada",
     classe: "border-red-200 bg-red-50 text-red-800",
   },
@@ -87,19 +87,236 @@ function SecaoDetalhes({ titulo, children }) {
   );
 }
 
-function ModalDetalhes({ ong, onClose, onUpdateStatus }) {
+// Compara somente campos que podem ser alterados na edição.
+function SecaoComparacao({ comparacao, carregando, erro, historica }) {
+  if (historica) {
+    return (
+      <div className="alert border border-base-300 bg-base-200 text-sm">
+        Esta edição já foi analisada. A comparação pendente pode não estar mais
+        disponível.
+      </div>
+    );
+  }
+
+  if (carregando) {
+    return (
+      <div role="status" className="flex items-center gap-2 text-sm">
+        <span className="loading loading-spinner loading-sm" />
+        Carregando comparação...
+      </div>
+    );
+  }
+
+  if (erro) {
+    return (
+      <div role="alert" className="alert alert-error text-sm">
+        {erro}
+      </div>
+    );
+  }
+
+  if (!comparacao) return null;
+
+  const atual = comparacao.dadosAtuais;
+  const proposto = comparacao.dadosPropostos;
+
+  const campos = [
+    ["Nome", "nome"],
+    ["Telefone", "telefone"],
+    ["Instagram", "instagram"],
+    ["Descrição curta", "descricaoCurta"],
+    ["Descrição completa", "descricao", "descricaoCompleta"],
+    ["CEP", "cep"],
+    ["Logradouro", "logradouro"],
+    ["Número", "numero"],
+    ["Complemento", "complemento"],
+    ["Bairro", "bairro"],
+    ["Cidade", "cidade"],
+    ["Estado", "estado"],
+  ];
+
+  const formatar = (valor) => String(valor ?? "").trim();
+
+  const imagensAtuais = atual.imagens || [];
+  const imagensPropostas = proposto.imagens || [];
+
+  const compararImagens = (imagens) =>
+    imagens
+      .map((imagem) =>
+        String(imagem.caminho || imagem.src || "")
+          .split("/")
+          .pop(),
+      )
+      .sort()
+      .join("|");
+
+  const categoriasPropostas = (proposto.categorias || []).map(String).sort();
+
+  return (
+    <SecaoDetalhes titulo="Comparação da edição solicitada">
+      <p className="mb-4 text-sm text-base-content/70">
+        Confira as alterações antes de aprovar. Os campos modificados estão
+        destacados.
+      </p>
+
+      <div className="space-y-3">
+        {campos.map(([titulo, chaveAtual, chaveProposta = chaveAtual]) => {
+          const anterior = formatar(atual[chaveAtual]);
+          const novo = formatar(proposto[chaveProposta]);
+          const alterado = anterior !== novo;
+
+          return (
+            <div
+              key={titulo}
+              className={`rounded-xl border p-3 ${
+                alterado ? "border-amber-300 bg-amber-50/60" : "border-base-300"
+              }`}
+            >
+              <p className="mb-2 text-xs font-bold uppercase text-base-content/70">
+                {titulo}
+                {alterado ? " • Alterado" : ""}
+              </p>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <CampoDetalhe titulo="Atual" valor={anterior} />
+                <CampoDetalhe titulo="Proposto" valor={novo} />
+              </div>
+            </div>
+          );
+        })}
+
+        <div className="rounded-xl border border-base-300 p-3">
+          <p className="mb-2 text-xs font-bold uppercase text-base-content/70">
+            Categorias
+          </p>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <CampoDetalhe
+              titulo="Atuais"
+              valor={atual.categorias?.join(", ")}
+            />
+            <CampoDetalhe
+              titulo="Propostas (IDs)"
+              valor={categoriasPropostas.join(", ")}
+            />
+          </div>
+
+          <p className="mt-2 text-xs text-base-content/60">
+            A comparação automática das categorias depende da correspondência
+            entre os IDs e os nomes cadastrados.
+          </p>
+        </div>
+
+        <div
+          className={`rounded-xl border p-3 ${
+            compararImagens(imagensAtuais) !== compararImagens(imagensPropostas)
+              ? "border-amber-300 bg-amber-50/60"
+              : "border-base-300"
+          }`}
+        >
+          <p className="mb-2 text-xs font-bold uppercase text-base-content/70">
+            Imagens
+          </p>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            {[
+              ["Atuais", imagensAtuais],
+              ["Propostas", imagensPropostas],
+            ].map(([titulo, imagens]) => (
+              <div key={titulo}>
+                <p className="mb-2 text-xs font-bold text-base-content/60">
+                  {titulo}
+                </p>
+
+                {imagens.length ? (
+                  <div className="grid grid-cols-2 gap-2">
+                    {imagens.map((imagem, indice) => (
+                      <img
+                        key={imagem.id || indice}
+                        src={imagem.src}
+                        alt={imagem.alt || "Imagem da ONG"}
+                        className="h-28 w-full rounded-xl border border-base-300 object-cover"
+                        onError={(event) => {
+                          if (
+                            !event.currentTarget.src.endsWith(
+                              "/img/default/ongs.png",
+                            )
+                          ) {
+                            event.currentTarget.src = "/img/default/ongs.png";
+                          }
+                        }}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-base-content/60">
+                    Nenhuma imagem.
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </SecaoDetalhes>
+  );
+}
+
+function ModalDetalhes({ ong, onClose, onUpdateStatus, onCarregarComparacao }) {
   const [modo, setModo] = useState("detalhes");
   const [justificativa, setJustificativa] = useState("");
   const [erroJustificativa, setErroJustificativa] = useState("");
   const [erroAnalise, setErroAnalise] = useState("");
   const [salvando, setSalvando] = useState(false);
 
+  const [comparacao, setComparacao] = useState(null);
+  const [carregandoComparacao, setCarregandoComparacao] = useState(false);
+  const [erroComparacao, setErroComparacao] = useState("");
+
+  const ehEdicao = ong.tipoSolicitacao === "EDICAO";
+
+  useEffect(() => {
+    if (!ehEdicao || ong.status !== "pendente") return;
+
+    let ativo = true;
+
+    async function buscarComparacao() {
+      setCarregandoComparacao(true);
+      setErroComparacao("");
+
+      try {
+        const dados = await onCarregarComparacao(ong.id);
+
+        if (ativo) {
+          setComparacao(dados);
+        }
+      } catch (erro) {
+        if (ativo) {
+          setErroComparacao(
+            erro.message || "Não foi possível carregar a comparação.",
+          );
+        }
+      } finally {
+        if (ativo) {
+          setCarregandoComparacao(false);
+        }
+      }
+    }
+
+    buscarComparacao();
+
+    return () => {
+      ativo = false;
+    };
+  }, [ehEdicao, ong.id, ong.status, onCarregarComparacao]);
+
   // Somente solicitações pendentes podem ser analisadas.
-  const podeAnalisar = ong.status === "pendente";
+  const podeAnalisar =
+    ong.status === "pendente" && (!ehEdicao || Boolean(comparacao));
 
   const executarAnalise = useCallback(
     async (status, motivo = "") => {
-      if (salvando || ong.status !== "pendente") {
+      if (salvando || !podeAnalisar) {
         return;
       }
 
@@ -116,7 +333,7 @@ function ModalDetalhes({ ong, onClose, onUpdateStatus }) {
         setSalvando(false);
       }
     },
-    [ong.id, ong.status, onClose, onUpdateStatus, salvando],
+    [ong.id, onClose, onUpdateStatus, podeAnalisar, salvando],
   );
 
   useEffect(() => {
@@ -188,8 +405,12 @@ function ModalDetalhes({ ong, onClose, onUpdateStatus }) {
                 {ong.nome}
               </h2>
 
-              <div className="mt-1">
+              <div className="mt-1 flex flex-wrap gap-2">
                 <StatusBadge status={ong.status} />
+
+                <span className="inline-flex rounded-full border border-base-300 bg-base-200 px-2.5 py-1 text-xs font-bold text-base-content">
+                  {ehEdicao ? "Edição" : "Cadastro"}
+                </span>
               </div>
             </div>
           </div>
@@ -209,6 +430,15 @@ function ModalDetalhes({ ong, onClose, onUpdateStatus }) {
         <div className="overflow-y-auto p-5 sm:p-6">
           {modo === "detalhes" ? (
             <div className="space-y-5">
+              {ehEdicao && (
+                <SecaoComparacao
+                  comparacao={comparacao}
+                  carregando={carregandoComparacao}
+                  erro={erroComparacao}
+                  historica={ong.status !== "pendente"}
+                />
+              )}
+
               <SecaoDetalhes titulo="Dados institucionais">
                 <dl className="grid gap-4 sm:grid-cols-2">
                   <CampoDetalhe titulo="Nome da organização" valor={ong.nome} />
@@ -414,7 +644,7 @@ function ModalDetalhes({ ong, onClose, onUpdateStatus }) {
               <div className="flex flex-col gap-3 sm:flex-row">
                 <button
                   type="button"
-                  disabled={salvando}
+                  disabled={salvando || !podeAnalisar}
                   onClick={() => {
                     setModo("reprovar");
                     setErroAnalise("");
@@ -428,7 +658,7 @@ function ModalDetalhes({ ong, onClose, onUpdateStatus }) {
 
                 <button
                   type="button"
-                  disabled={salvando}
+                  disabled={salvando || !podeAnalisar}
                   onClick={() => executarAnalise("aprovada")}
                   title="Aprovar solicitação"
                   className="btn btn-primary rounded-xl"
@@ -455,6 +685,7 @@ export function AdminSolicitacoesPage({ status }) {
     solicitacoes,
     atualizarStatus,
     carregarSolicitacoes,
+    carregarComparacao,
     carregando,
     erro,
   } = useAdminSolicitacoes();
@@ -699,6 +930,7 @@ export function AdminSolicitacoesPage({ status }) {
                       <th>ONG</th>
                       <th>CNPJ</th>
                       <th>Contato</th>
+                      <th>Tipo</th>
                       <th>Status</th>
                       <th className="text-right">Ações</th>
                     </tr>
@@ -757,6 +989,14 @@ export function AdminSolicitacoesPage({ status }) {
                         </td>
 
                         <td>
+                          <span className="inline-flex rounded-full border border-base-300 bg-base-200 px-2.5 py-1 text-xs font-bold text-base-content">
+                            {ong.tipoSolicitacao === "EDICAO"
+                              ? "Edição"
+                              : "Cadastro"}
+                          </span>
+                        </td>
+
+                        <td>
                           <StatusBadge status={ong.status} />
                         </td>
 
@@ -776,7 +1016,7 @@ export function AdminSolicitacoesPage({ status }) {
 
                     {solicitacoesFiltradas.length === 0 && (
                       <tr>
-                        <td colSpan={5} className="py-12 text-center">
+                        <td colSpan={6} className="py-12 text-center">
                           <i
                             className="fa-solid fa-inbox mb-3 text-3xl text-base-content/30"
                             aria-hidden="true"
@@ -797,7 +1037,7 @@ export function AdminSolicitacoesPage({ status }) {
 
                   <tfoot className="bg-base-200/70 text-xs text-base-content/60">
                     <tr>
-                      <th colSpan={5} className="font-medium">
+                      <th colSpan={6} className="font-medium">
                         {solicitacoesFiltradas.length} solicitação(ões) nesta
                         visualização
                       </th>
@@ -834,6 +1074,7 @@ export function AdminSolicitacoesPage({ status }) {
           ong={ongSelecionada}
           onClose={() => setOngSelecionada(null)}
           onUpdateStatus={atualizarStatus}
+          onCarregarComparacao={carregarComparacao}
         />
       )}
     </>

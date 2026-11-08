@@ -1,10 +1,6 @@
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8080";
 
-/**
- * Obtém o token CSRF fornecido pelo backend.
- *
- * O token protege as requisições que alteram dados.
- */
+// Obtém o token CSRF necessário para requisições que alteram dados.
 async function obterTokenCsrf() {
   const resposta = await fetch(`${API_URL}/api/auth/csrf`, {
     method: "GET",
@@ -23,50 +19,41 @@ async function obterTokenCsrf() {
   return dados.token;
 }
 
-/**
- * Realiza uma requisição para o backend.
- *
- * Centraliza o envio da sessão, a proteção CSRF,
- * o tratamento das respostas e os erros da API.
- */
+// Realiza requisições à API mantendo a sessão autenticada.
 export async function apiFetch(endpoint, options = {}) {
   const metodo = (options.method || "GET").toUpperCase();
 
   const headers = new Headers(options.headers || {});
 
-  // Métodos que não modificam dados não exigem token CSRF.
   const metodosSeguros = ["GET", "HEAD", "OPTIONS", "TRACE"];
 
+  // Envia o token CSRF nas requisições que modificam dados.
   if (!metodosSeguros.includes(metodo)) {
-    const tokenCsrf = await obterTokenCsrf();
-
-    headers.set("X-XSRF-TOKEN", tokenCsrf);
+    headers.set("X-XSRF-TOKEN", await obterTokenCsrf());
   }
 
   const resposta = await fetch(`${API_URL}${endpoint}`, {
     ...options,
     method: metodo,
     headers,
-
-    // Envia o cookie da sessão ao backend.
     credentials: "include",
   });
 
-  // Trata respostas sem conteúdo, como o logout.
+  // Respostas sem conteúdo, como HTTP 204.
   if (resposta.status === 204) {
     return null;
   }
 
-  // Aceita JSON e respostas textuais.
   const tipoConteudo = resposta.headers.get("content-type") || "";
 
+  // Identifica respostas JSON ou texto.
   const dados = tipoConteudo.includes("application/json")
     ? await resposta.json().catch(() => null)
     : await resposta
         .text()
         .then((texto) => (texto ? { mensagem: texto } : null));
 
-  // Converte erros HTTP em exceções.
+  // Trata os erros retornados pelo backend.
   if (!resposta.ok) {
     const erro = new Error(
       dados?.mensagem ||
@@ -74,7 +61,10 @@ export async function apiFetch(endpoint, options = {}) {
         "Não foi possível realizar a operação.",
     );
 
-    // Preserva os erros específicos dos campos.
+    // Permite identificar o código HTTP no frontend.
+    erro.status = resposta.status;
+
+    // Preserva os detalhes de validação retornados pela API.
     erro.detalhes = dados?.detalhes || {};
 
     throw erro;

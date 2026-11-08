@@ -1,13 +1,64 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-
 import OngCard from "./OngCard";
+import { apiFetch } from "../../services/Api";
 
-import listaOngs from "../../data/ongs";
+// =========================================================
+// ADAPTAÇÃO DOS DADOS DA API
+// =========================================================
+
+function adaptarOng(dados) {
+  const categorias = (dados.categorias || [])
+    .map((categoria) => categoria.nomeCategoria)
+    .filter(Boolean);
+
+  const descricoes = dados.descricoes || [];
+
+  const descricaoCurta = descricoes.find(
+    (descricao) => descricao.tipoDescricao === "RESUMO",
+  );
+
+  const descricaoCompleta = descricoes.find(
+    (descricao) => descricao.tipoDescricao === "SOBRE",
+  );
+
+  const endereco = dados.endereco;
+
+  const localizacao = endereco
+    ? [endereco.cidade, endereco.estado].filter(Boolean).join(" - ")
+    : "";
+
+  const API_URL = (
+    import.meta.env.VITE_API_URL || "http://localhost:8080"
+  ).replace(/\/$/, "");
+
+  const imagens = (dados.imagens || []).map((imagem) => ({
+    src: imagem.caminho
+      ? `${API_URL}${imagem.caminho}`
+      : "/img/default/ongs.png",
+    alt: imagem.textoAlternativo || `Imagem da ONG ${dados.nome}`,
+  }));
+
+  return {
+    id: dados.idOng,
+    nome: dados.nome,
+    instagram: dados.instagram,
+    categoriaPrincipal: categorias[0] || "",
+    categorias,
+    descricao: descricaoCurta?.texto || descricaoCompleta?.texto || "",
+    descricaoCompleta: descricaoCompleta?.texto || "",
+    localizacao,
+    imagens,
+  };
+}
 
 function OngsFeed() {
   // =========================================================
   // ESTADOS
   // =========================================================
+
+  const [listaOngs, setListaOngs] = useState([]);
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState("");
 
   const [termoBusca, setTermoBusca] = useState("");
   const [categoriaSelecionada, setCategoriaSelecionada] = useState("");
@@ -16,16 +67,53 @@ function OngsFeed() {
   const observadorRef = useRef(null);
 
   // =========================================================
+  // CARREGAMENTO DAS ONGS
+  // =========================================================
+
+  useEffect(() => {
+    let ativo = true;
+
+    async function carregarOngs() {
+      try {
+        setCarregando(true);
+        setErro("");
+
+        const dados = await apiFetch("/api/ongs");
+
+        if (!ativo) return;
+
+        const ongs = Array.isArray(dados) ? dados.map(adaptarOng) : [];
+
+        setListaOngs(ongs);
+      } catch (error) {
+        if (!ativo) return;
+
+        setErro(error.message || "Não foi possível carregar as ONGs.");
+      } finally {
+        if (ativo) {
+          setCarregando(false);
+        }
+      }
+    }
+
+    carregarOngs();
+
+    return () => {
+      ativo = false;
+    };
+  }, []);
+
+  // =========================================================
   // CATEGORIAS DISPONÍVEIS
   // =========================================================
 
   const categoriasDisponiveis = useMemo(() => {
     return [
       ...new Set(
-        listaOngs.map((ong) => ong.categoriaPrincipal).filter(Boolean),
+        listaOngs.flatMap((ong) => ong.categorias || []).filter(Boolean),
       ),
     ];
-  }, []);
+  }, [listaOngs]);
 
   // =========================================================
   // FILTRO DE ONGS
@@ -61,12 +149,11 @@ function OngsFeed() {
       // =====================================================
 
       const correspondeCategoria =
-        !categoriaSelecionada ||
-        ong.categoriaPrincipal === categoriaSelecionada;
+        !categoriaSelecionada || categorias.includes(categoriaSelecionada);
 
       return correspondePesquisa && correspondeCategoria;
     });
-  }, [termoBusca, categoriaSelecionada]);
+  }, [listaOngs, termoBusca, categoriaSelecionada]);
 
   // =========================================================
   // VERIFICA SE EXISTE FILTRO ATIVO
@@ -94,13 +181,17 @@ function OngsFeed() {
 
     // =====================================================
     // SEM FILTRO, MANTÉM O FEED INFINITO
+    // SEM REPETIR ORGANIZAÇÕES
     // =====================================================
 
-    return Array.from(
-      { length: quantidadeVisivel },
-      (_, index) => ongsFiltradas[index % ongsFiltradas.length],
-    );
+    return ongsFiltradas.slice(0, quantidadeVisivel);
   }, [ongsFiltradas, quantidadeVisivel, filtroAtivo]);
+
+  // =========================================================
+  // VERIFICA SE EXISTEM MAIS ONGS
+  // =========================================================
+
+  const temMaisOngs = !filtroAtivo && quantidadeVisivel < ongsFiltradas.length;
 
   // =========================================================
   // SCROLL INFINITO
@@ -112,7 +203,7 @@ function OngsFeed() {
     // NÃO ATIVA O SCROLL INFINITO
     // =====================================================
 
-    if (filtroAtivo) {
+    if (filtroAtivo || carregando || erro || !temMaisOngs) {
       return;
     }
 
@@ -127,7 +218,9 @@ function OngsFeed() {
         const [entry] = entries;
 
         if (entry.isIntersecting) {
-          setQuantidadeVisivel((quantidadeAtual) => quantidadeAtual + 6);
+          setQuantidadeVisivel((quantidadeAtual) =>
+            Math.min(quantidadeAtual + 6, ongsFiltradas.length),
+          );
         }
       },
       {
@@ -142,7 +235,7 @@ function OngsFeed() {
     return () => {
       observer.disconnect();
     };
-  }, [filtroAtivo]);
+  }, [filtroAtivo, carregando, erro, temMaisOngs, ongsFiltradas.length]);
 
   // =========================================================
   // ALTERAR PESQUISA
@@ -300,14 +393,33 @@ function OngsFeed() {
             lg:grid-cols-3
           "
         >
-          {ongsFiltradas.length > 0 ? (
+          {carregando ? (
+            <div className="col-span-full py-16 text-center">
+              <span className="loading loading-spinner loading-lg text-primary"></span>
+
+              <p className="mt-4 text-base-content/60">
+                Carregando organizações...
+              </p>
+            </div>
+          ) : erro ? (
+            <div className="col-span-full py-16 text-center">
+              <i
+                className="fa-solid fa-circle-exclamation mb-4 text-3xl text-primary/40"
+                aria-hidden="true"
+              ></i>
+
+              <h3 className="mb-2 text-xl font-bold text-base-content">
+                Não foi possível carregar as ONGs
+              </h3>
+
+              <p className="text-lg text-base-content/60">{erro}</p>
+            </div>
+          ) : ongsFiltradas.length > 0 ? (
             /* =================================================
                 ONGS ENCONTRADAS
             ================================================= */
 
-            ongsVisiveis.map((ong, index) => (
-              <OngCard key={`${ong.id}-${index}`} ong={ong} />
-            ))
+            ongsVisiveis.map((ong) => <OngCard key={ong.id} ong={ong} />)
           ) : (
             /* =================================================
                 ESTADO VAZIO
@@ -342,10 +454,10 @@ function OngsFeed() {
             DETECTOR DO SCROLL INFINITO
 
             SÓ APARECE QUANDO NÃO EXISTE FILTRO
-            OU PESQUISA ATIVA
+            OU PESQUISA ATIVA E AINDA HÁ ONGS
         ===================================================== */}
 
-        {!filtroAtivo && ongsFiltradas.length > 0 && (
+        {!carregando && !erro && temMaisOngs && (
           <div
             ref={observadorRef}
             className="flex justify-center py-10"

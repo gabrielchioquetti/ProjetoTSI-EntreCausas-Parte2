@@ -17,6 +17,9 @@ import br.edu.ifsp.entrecausas.repository.UsuarioRepository;
 import br.edu.ifsp.entrecausas.security.AesCryptoUtil;
 import br.edu.ifsp.entrecausas.security.HmacCryptoUtil;
 
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import org.springframework.stereotype.Service;
@@ -184,73 +187,106 @@ public class UsuarioService {
         return converterParaDTO(usuario);
     }
 
-    // Atualiza os dados do perfil.
+    // Atualiza somente os dados informados do perfil.
     @Transactional
     public UsuarioResponseDTO atualizar(
             Long id,
             UsuarioUpdateDTO dto,
             MultipartFile novaFoto) {
 
+        // Impede a alteração de outra conta.
+        validarProprioUsuario(id);
+
         Usuario usuario = buscarUsuario(id);
 
-        String cpf = normalizarDigitos(dto.cpf());
-        String telefone = normalizarDigitos(dto.telefone());
+        // Atualiza o nome somente quando informado.
+        if (dto.nome() != null) {
 
-        // Verifica e-mail de outro usuário.
-        if (!usuario.getEmail().equalsIgnoreCase(dto.email())
-                && usuarioRepository.existsByEmail(dto.email())) {
+            String nome = dto.nome().trim();
 
-            throw new ConflitoException(
-                "E-mail já cadastrado por outro usuário."
-            );
+            if (nome.isBlank()) {
+                throw new IllegalArgumentException(
+                    "O nome não pode ficar vazio."
+                );
+            }
+
+            usuario.setNome(nome);
         }
 
-        String cpfHash =
-            hmacCryptoUtil.gerarHash(cpf);
+        // Atualiza o e-mail somente quando informado.
+        if (dto.email() != null) {
 
-        String telefoneHash =
-            hmacCryptoUtil.gerarHash(telefone);
+            String email = dto.email().trim();
 
-        // Verifica CPF usado por outro usuário.
-        if (usuarioRepository
-                .existsByCpfHashAndIdUsuarioNot(
-                    cpfHash,
-                    id)) {
+            if (email.isBlank()) {
+                throw new IllegalArgumentException(
+                    "O e-mail não pode ficar vazio."
+                );
+            }
 
-            throw new ConflitoException(
-                "CPF já cadastrado por outro usuário."
-            );
+            // Verifica e-mail de outro usuário.
+            if (!usuario.getEmail().equalsIgnoreCase(email)
+                    && usuarioRepository.existsByEmail(email)) {
+
+                throw new ConflitoException(
+                    "E-mail já cadastrado por outro usuário."
+                );
+            }
+
+            usuario.setEmail(email);
         }
 
-        // Verifica telefone usado por outro usuário.
-        if (usuarioRepository
-                .existsByTelefoneHashAndIdUsuarioNot(
-                    telefoneHash,
-                    id)) {
+        // Atualiza o telefone somente quando informado.
+        if (dto.telefone() != null) {
 
-            throw new ConflitoException(
-                "Telefone já cadastrado por outro usuário."
-            );
+            String telefone = dto.telefone().trim();
+
+            if (telefone.isBlank()) {
+                throw new IllegalArgumentException(
+                    "O telefone não pode ficar vazio."
+                );
+            }
+
+            // A validação do DTO exige somente dígitos.
+            telefone = normalizarDigitos(telefone);
+
+            if (!telefone.matches("\\d{10,11}")) {
+                throw new IllegalArgumentException(
+                    "O telefone deve conter 10 ou 11 dígitos."
+                );
+            }
+
+            String telefoneAtual =
+                aesCryptoUtil.decrypt(usuario.getTelefone());
+
+            // Evita recriptografar um telefone não alterado.
+            if (!telefone.equals(telefoneAtual)) {
+
+                String telefoneHash =
+                    hmacCryptoUtil.gerarHash(telefone);
+
+                // Verifica telefone usado por outro usuário.
+                if (usuarioRepository
+                        .existsByTelefoneHashAndIdUsuarioNot(
+                            telefoneHash,
+                            id)) {
+
+                    throw new ConflitoException(
+                        "Telefone já cadastrado por outro usuário."
+                    );
+                }
+
+                // Atualiza o telefone criptografado.
+                usuario.setTelefone(
+                    aesCryptoUtil.encrypt(telefone)
+                );
+
+                usuario.setTelefoneHash(telefoneHash);
+            }
         }
 
-        usuario.setNome(dto.nome());
-        usuario.setEmail(dto.email());
-
-        // Atualiza o CPF criptografado.
-        usuario.setCpf(
-            aesCryptoUtil.encrypt(cpf)
-        );
-
-        usuario.setCpfHash(cpfHash);
-
-        // Atualiza o telefone criptografado.
-        usuario.setTelefone(
-            aesCryptoUtil.encrypt(telefone)
-        );
-
-        usuario.setTelefoneHash(telefoneHash);
-
-        // A função não é alterada pelo usuário.
+        // O CPF e seu hash nunca são alterados.
+        // A função também não é alterada pelo usuário.
 
         String fotoAntiga =
             usuario.getFotoPerfil();
@@ -303,6 +339,7 @@ public class UsuarioService {
 
             // Remove a nova foto se o banco falhar.
             if (novaFotoSalva != null) {
+
                 fileStorageService.deletarArquivo(
                     novaFotoSalva
                 );
@@ -317,6 +354,9 @@ public class UsuarioService {
     public void alterarSenha(
             Long id,
             AlterarSenhaDTO dto) {
+
+        // Impede alterar a senha de outra conta.
+        validarProprioUsuario(id);
 
         Usuario usuario = buscarUsuario(id);
 
@@ -353,6 +393,9 @@ public class UsuarioService {
     @Transactional
     public void deletar(Long id) {
 
+        // Impede excluir outra conta.
+        validarProprioUsuario(id);
+
         Usuario usuario = buscarUsuario(id);
 
         // Remove a foto antes do registro.
@@ -365,6 +408,40 @@ public class UsuarioService {
         }
 
         usuarioRepository.delete(usuario);
+    }
+
+    // Confirma que a conta pertence ao usuário autenticado.
+    private void validarProprioUsuario(Long id) {
+
+        Authentication autenticacao =
+            SecurityContextHolder.getContext()
+                .getAuthentication();
+
+        if (autenticacao == null
+                || !autenticacao.isAuthenticated()
+                || "anonymousUser".equals(
+                    autenticacao.getPrincipal())) {
+
+            throw new AccessDeniedException(
+                "É necessário entrar na conta."
+            );
+        }
+
+        Usuario usuarioAutenticado =
+            usuarioRepository.findByEmail(
+                autenticacao.getName()
+            ).orElseThrow(() ->
+                new AccessDeniedException(
+                    "A sessão não possui um usuário válido."
+                )
+            );
+
+        if (!usuarioAutenticado.getIdUsuario().equals(id)) {
+
+            throw new AccessDeniedException(
+                "Você não tem permissão para alterar esta conta."
+            );
+        }
     }
 
     // Busca um usuário ou lança 404.
@@ -411,4 +488,17 @@ public class UsuarioService {
             usuario.getFuncao().getNome()
         );
     }
+
+    
+    // Busca a entidade do próprio usuário autenticado.
+    @Transactional(readOnly = true)
+    public Usuario buscarEntidadePorId(Long id) {
+
+        // Confirma que o usuário autenticado é o proprietário.
+        validarProprioUsuario(id);
+
+        // Reutiliza a busca existente.
+        return buscarUsuario(id);
+    }
+
 }

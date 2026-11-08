@@ -1,6 +1,7 @@
 package br.edu.ifsp.entrecausas.repository;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -11,4 +12,7 @@ public interface ImagemRepository extends JpaRepository<Imagem, Long> {
 
     // Lista as imagens de uma ONG.
     List<Imagem> findByOngIdOng(Long idOng);
+
+    // Busca uma imagem pelo caminho armazenado.
+    Optional<Imagem> findByCaminho(String caminho);
 }

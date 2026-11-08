@@ -1,8 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router";
 
 import DetalhesOng from "../../components/DetalhesOng/DetalhesOng";
-import listaOngs from "../../data/ongs";
 import Footer from "../../components/Footer/Footer";
 
 import BackToTop from "../../components/Acessibilidade/BackToTop";
@@ -11,6 +10,11 @@ import UserWay from "../../components/Acessibilidade/UserWay";
 import Ongs from "../../components/Ongs/Ongs";
 
 import { apiFetch } from "../../services/Api.js";
+
+// Endereço do backend responsável por disponibilizar as imagens.
+const API_URL = (
+  import.meta.env.VITE_API_URL || "http://localhost:8080"
+).replace(/\/$/, "");
 
 // Converte os dados da API para o formato utilizado pelo DetalhesOng.
 function adaptarOng(dados) {
@@ -42,10 +46,21 @@ function adaptarOng(dados) {
     : "";
 
   // Converte as imagens para o formato da galeria.
-  const imagens = (dados.imagens || []).map((imagem) => ({
-    src: imagem.caminho,
-    alt: imagem.textoAlternativo || `Imagem da ${dados.nome}`,
-  }));
+  const imagens = (dados.imagens || []).map((imagem) => {
+    const caminho = imagem.caminho || "";
+
+    // Mantém URLs completas e adiciona o backend aos caminhos relativos.
+    const src = /^https?:\/\//i.test(caminho)
+      ? caminho
+      : caminho
+        ? `${API_URL}${caminho.startsWith("/") ? "" : "/"}${caminho}`
+        : "/img/default/ongs.png";
+
+    return {
+      src,
+      alt: imagem.textoAlternativo || `Imagem da ${dados.nome}`,
+    };
+  });
 
   // Normaliza o link do Instagram.
   const instagram = dados.instagram?.trim();
@@ -69,6 +84,7 @@ function adaptarOng(dados) {
     statusSolicitacao: dados.statusSolicitacao,
     dataAnalise: dados.dataAnalise,
     motivoRejeicao: dados.motivoRejeicao,
+    publicada: dados.publicada === true,
   };
 }
 
@@ -92,6 +108,7 @@ function formatarData(data) {
 // Exibe o acompanhamento da solicitação da ONG.
 function StatusMinhaOng({ ong }) {
   const status = ong.statusSolicitacao?.toUpperCase();
+  const publicada = ong.publicada === true;
 
   const configuracoes = {
     PENDENTE: {
@@ -101,12 +118,29 @@ function StatusMinhaOng({ ong }) {
       estilo: "border-warning/30 bg-warning/10",
       icone: "fa-solid fa-clock",
     },
+
+    APROVADO: {
+      titulo: "ONG aprovada",
+      descricao: "Sua solicitação foi aprovada pela equipe do EntreCausas.",
+      estilo: "border-success/30 bg-success/10",
+      icone: "fa-solid fa-circle-check",
+    },
+
     APROVADA: {
       titulo: "ONG aprovada",
       descricao: "Sua solicitação foi aprovada pela equipe do EntreCausas.",
       estilo: "border-success/30 bg-success/10",
       icone: "fa-solid fa-circle-check",
     },
+
+    REJEITADO: {
+      titulo: "Solicitação rejeitada",
+      descricao:
+        "Sua solicitação foi rejeitada. Confira o motivo informado pela equipe responsável.",
+      estilo: "border-error/30 bg-error/10",
+      icone: "fa-solid fa-circle-exclamation",
+    },
+
     REJEITADA: {
       titulo: "Solicitação rejeitada",
       descricao:
@@ -114,6 +148,7 @@ function StatusMinhaOng({ ong }) {
       estilo: "border-error/30 bg-error/10",
       icone: "fa-solid fa-circle-exclamation",
     },
+
     REPROVADA: {
       titulo: "Solicitação reprovada",
       descricao:
@@ -123,7 +158,7 @@ function StatusMinhaOng({ ong }) {
     },
   };
 
-  const configuracao = configuracoes[status] || {
+  const configuracaoPadrao = configuracoes[status] || {
     titulo: "Situação da solicitação",
     descricao: status
       ? `Status atual: ${status}`
@@ -131,6 +166,26 @@ function StatusMinhaOng({ ong }) {
     estilo: "border-base-300 bg-base-200",
     icone: "fa-solid fa-circle-info",
   };
+
+  // Diferencia o estado da publicação da última solicitação.
+  const configuracao =
+    publicada && status === "PENDENTE"
+      ? {
+          titulo: "Alteração aguardando análise",
+          descricao:
+            "Sua ONG continua publicada no EntreCausas. As alterações enviadas serão aplicadas após a aprovação da equipe.",
+          estilo: "border-warning/30 bg-warning/10",
+          icone: "fa-solid fa-clock",
+        }
+      : publicada && ["REJEITADO", "REJEITADA", "REPROVADA"].includes(status)
+        ? {
+            titulo: "Alteração rejeitada",
+            descricao:
+              "Sua ONG continua publicada com os dados anteriores. Confira o motivo da rejeição da alteração.",
+            estilo: "border-error/30 bg-error/10",
+            icone: "fa-solid fa-circle-exclamation",
+          }
+        : configuracaoPadrao;
 
   const dataAnalise = formatarData(ong.dataAnalise);
 
@@ -156,6 +211,15 @@ function StatusMinhaOng({ ong }) {
                 {configuracao.descricao}
               </p>
 
+              {/* Orienta a correção de cadastros rejeitados. */}
+              {!publicada &&
+                ["REJEITADO", "REJEITADA", "REPROVADA"].includes(status) && (
+                  <p className="mt-3 text-sm text-base-content/70">
+                    Você pode corrigir os dados da sua organização e enviar uma
+                    nova solicitação para análise.
+                  </p>
+                )}
+
               {dataAnalise && (
                 <p className="mt-3 text-sm text-base-content/70">
                   <strong>Data da análise:</strong> {dataAnalise}
@@ -163,7 +227,7 @@ function StatusMinhaOng({ ong }) {
               )}
 
               {ong.motivoRejeicao &&
-                ["REJEITADA", "REPROVADA"].includes(status) && (
+                ["REJEITADO", "REJEITADA", "REPROVADA"].includes(status) && (
                   <p className="mt-3 text-sm text-base-content/70">
                     <strong>Motivo da rejeição:</strong> {ong.motivoRejeicao}
                   </p>
@@ -182,20 +246,83 @@ function Detalhes() {
   const minhaOrganizacao = pathname === "/minha-organizacao";
 
   const parametros = new URLSearchParams(search);
-
   const id = Number(parametros.get("id"));
 
-  // Mantém a consulta atual da página pública.
-  const ongPublica = useMemo(() => {
-    if (minhaOrganizacao) return null;
+  const idPublicoValido =
+    parametros.has("id") && Number.isSafeInteger(id) && id > 0;
 
-    return listaOngs.find((item) => item.id === id);
-  }, [id, minhaOrganizacao]);
+  // Estados utilizados na página pública.
+  const [ongPublica, setOngPublica] = useState(null);
+  const [carregandoPublica, setCarregandoPublica] = useState(false);
+  const [erroPublica, setErroPublica] = useState("");
+  const [ongNaoEncontrada, setOngNaoEncontrada] = useState(false);
 
   // Estados utilizados somente na página Minha ONG.
   const [minhaOng, setMinhaOng] = useState(null);
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState("");
+
+  // =========================================================
+  // CARREGAMENTO DOS DETALHES PÚBLICOS
+  // =========================================================
+
+  useEffect(() => {
+    if (minhaOrganizacao) return;
+
+    let ativo = true;
+
+    async function carregarOngPublica() {
+      setCarregandoPublica(true);
+      setErroPublica("");
+      setOngNaoEncontrada(false);
+      setOngPublica(null);
+
+      if (!idPublicoValido) {
+        setOngNaoEncontrada(true);
+        setCarregandoPublica(false);
+        return;
+      }
+
+      try {
+        const dados = await apiFetch(`/api/ongs/${id}`);
+
+        if (!ativo) return;
+
+        if (!dados) {
+          setOngNaoEncontrada(true);
+          return;
+        }
+
+        setOngPublica(adaptarOng(dados));
+      } catch (error) {
+        if (!ativo) return;
+
+        // O endpoint público retorna 404 para ONGs
+        // inexistentes ou não disponíveis publicamente.
+        if (error.status === 404) {
+          setOngNaoEncontrada(true);
+        } else {
+          setErroPublica(
+            error.message || "Não foi possível carregar os detalhes da ONG.",
+          );
+        }
+      } finally {
+        if (ativo) {
+          setCarregandoPublica(false);
+        }
+      }
+    }
+
+    carregarOngPublica();
+
+    return () => {
+      ativo = false;
+    };
+  }, [minhaOrganizacao, id, idPublicoValido]);
+
+  // =========================================================
+  // CARREGAMENTO DA ONG DO USUÁRIO
+  // =========================================================
 
   useEffect(() => {
     if (!minhaOrganizacao) return;
@@ -338,8 +465,61 @@ function Detalhes() {
               )}
             </>
           ) : (
-            /* Mantém os detalhes públicos */
-            <DetalhesOng key={ong?.id ?? "not-found"} ong={ong} />
+            /* Detalhes públicos da ONG */
+            <>
+              {carregandoPublica ? (
+                <section className="bg-base-100 py-20" aria-live="polite">
+                  <div className="mx-auto w-full max-w-7xl px-15">
+                    <div className="flex flex-col items-center gap-4">
+                      <span
+                        className="loading loading-spinner loading-lg text-primary"
+                        aria-hidden="true"
+                      ></span>
+
+                      <p className="text-base-content/70">
+                        Carregando organização...
+                      </p>
+                    </div>
+                  </div>
+                </section>
+              ) : erroPublica ? (
+                <section className="bg-base-100 py-20">
+                  <div className="mx-auto w-full max-w-7xl px-15">
+                    <div
+                      role="alert"
+                      className="rounded-2xl border border-error/30 bg-base-100 p-10"
+                    >
+                      <h1 className="mb-3 text-3xl font-black">
+                        Não foi possível carregar a ONG
+                      </h1>
+
+                      <p className="text-base-content/70">{erroPublica}</p>
+                    </div>
+                  </div>
+                </section>
+              ) : ongNaoEncontrada || !ong ? (
+                <section className="bg-base-100 py-20">
+                  <div className="mx-auto w-full max-w-7xl px-15">
+                    <div className="rounded-2xl border border-base-300 bg-base-100 p-10">
+                      <h1 className="mb-3 text-3xl font-black">
+                        ONG não encontrada
+                      </h1>
+
+                      <p className="mb-6 text-base-content/60">
+                        A organização solicitada não existe ou não está
+                        disponível para consulta pública.
+                      </p>
+
+                      <Link to="/" className="btn btn-primary">
+                        Voltar para o início
+                      </Link>
+                    </div>
+                  </div>
+                </section>
+              ) : (
+                <DetalhesOng key={ong.id} ong={ong} />
+              )}
+            </>
           )}
         </main>
 

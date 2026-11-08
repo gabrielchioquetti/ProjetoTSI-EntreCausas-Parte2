@@ -7,7 +7,7 @@ import { AuthProvider } from "./contexts/AuthContext.jsx";
 import RotaProtegida from "./routes/RotaProtegida.jsx";
 import AppLayout from "./layouts/AppLayout";
 import Home from "./pages/Home";
-import Detalhes from "./pages/Detalhes/Detalhes";
+import Detalhes from "./pages/Detalhes/detalhes";
 import Impacto from "./pages/Impacto/impacto";
 import Login from "./pages/Login/Login";
 import FormularioPost from "./styles/FormularioPost/FormularioPost";

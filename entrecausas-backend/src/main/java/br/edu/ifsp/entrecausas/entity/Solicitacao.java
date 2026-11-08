@@ -52,6 +52,11 @@ public class Solicitacao {
     )
     private StatusSolicitacao status;
 
+    // Identifica se a solicitação é de cadastro ou edição.
+    // Permanece opcional para compatibilidade com registros antigos.
+    @Column(name = "tipo_solicitacao", length = 20)
+    private String tipoSolicitacao;
+
     // Data e hora da análise.
     @Column(name = "data_analise")
     private LocalDateTime dataAnalise;
@@ -95,6 +100,7 @@ public class Solicitacao {
         this.ong = ong;
         this.usuario = usuario;
         this.status = status;
+        this.tipoSolicitacao = "CADASTRO";
     }
 
     public Long getIdSolicitacao() {
@@ -135,6 +141,14 @@ public class Solicitacao {
 
     public void setStatus(StatusSolicitacao status) {
         this.status = status;
+    }
+
+    public String getTipoSolicitacao() {
+        return tipoSolicitacao;
+    }
+
+    public void setTipoSolicitacao(String tipoSolicitacao) {
+        this.tipoSolicitacao = tipoSolicitacao;
     }
 
     public LocalDateTime getDataAnalise() {

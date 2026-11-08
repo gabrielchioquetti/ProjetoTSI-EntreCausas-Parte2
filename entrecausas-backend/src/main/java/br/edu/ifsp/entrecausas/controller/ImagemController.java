@@ -2,37 +2,44 @@ package br.edu.ifsp.entrecausas.controller;
 
 import java.util.List;
 
+import org.springframework.core.io.Resource;
+import org.springframework.http.CacheControl;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import br.edu.ifsp.entrecausas.dto.ImagemResponseDTO;
+import br.edu.ifsp.entrecausas.service.FileStorageService;
 import br.edu.ifsp.entrecausas.service.ImagemService;
 
 @RestController
-@RequestMapping("/api/imagens")
 public class ImagemController {
 
     private final ImagemService imagemService;
+    private final FileStorageService fileStorageService;
 
     // Injeção de dependência via construtor.
     public ImagemController(
-            ImagemService imagemService) {
+            ImagemService imagemService,
+            FileStorageService fileStorageService) {
 
         this.imagemService = imagemService;
+        this.fileStorageService = fileStorageService;
     }
 
     // Upload de UMA imagem.
     @PostMapping(
+        value = "/api/imagens",
         consumes = MediaType.MULTIPART_FORM_DATA_VALUE
     )
     public ResponseEntity<ImagemResponseDTO> cadastrar(
@@ -58,7 +65,7 @@ public class ImagemController {
 
     // Upload em lote de imagens.
     @PostMapping(
-        value = "/lote",
+        value = "/api/imagens/lote",
         consumes = MediaType.MULTIPART_FORM_DATA_VALUE
     )
     public ResponseEntity<List<ImagemResponseDTO>>
@@ -85,7 +92,7 @@ public class ImagemController {
     }
 
     // Lista todas as imagens.
-    @GetMapping
+    @GetMapping("/api/imagens")
     public ResponseEntity<List<ImagemResponseDTO>>
             listarTodas() {
 
@@ -95,7 +102,7 @@ public class ImagemController {
     }
 
     // Busca uma imagem pelo ID.
-    @GetMapping("/{id}")
+    @GetMapping("/api/imagens/{id}")
     public ResponseEntity<ImagemResponseDTO> buscarPorId(
             @PathVariable Long id) {
 
@@ -105,7 +112,7 @@ public class ImagemController {
     }
 
     // Lista as imagens de uma ONG.
-    @GetMapping("/ong/{idOng}")
+    @GetMapping("/api/imagens/ong/{idOng}")
     public ResponseEntity<List<ImagemResponseDTO>>
             listarPorOng(
                 @PathVariable Long idOng) {
@@ -117,7 +124,7 @@ public class ImagemController {
 
     // Atualiza uma imagem com arquivo opcional.
     @PutMapping(
-        value = "/{id}",
+        value = "/api/imagens/{id}",
         consumes = MediaType.MULTIPART_FORM_DATA_VALUE
     )
     public ResponseEntity<ImagemResponseDTO> atualizar(
@@ -146,7 +153,7 @@ public class ImagemController {
     }
 
     // Remove a imagem do banco e do arquivo físico.
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/api/imagens/{id}")
     public ResponseEntity<Void> deletar(
             @PathVariable Long id) {
 
@@ -155,5 +162,40 @@ public class ImagemController {
         return ResponseEntity
             .noContent()
             .build();
+    }
+
+    // Entrega uma imagem após verificar a autorização.
+    @GetMapping("/uploads/{nomeArquivo:.+}")
+    public ResponseEntity<Resource> visualizarImagem(
+            @PathVariable String nomeArquivo,
+            Authentication authentication) {
+
+        // Verifica se o visitante pode acessar a imagem.
+        imagemService.verificarAcesso(
+            nomeArquivo,
+            authentication
+        );
+
+        // Carrega o arquivo somente após a autorização.
+        Resource recurso =
+            fileStorageService.carregarArquivo(nomeArquivo);
+
+        String tipoConteudo =
+            fileStorageService.obterTipoConteudo(nomeArquivo);
+
+        return ResponseEntity.ok()
+            .contentType(MediaType.parseMediaType(tipoConteudo))
+            .header(
+                HttpHeaders.CONTENT_DISPOSITION,
+                "inline"
+            )
+            .header(
+                "X-Content-Type-Options",
+                "nosniff"
+            )
+            .cacheControl(
+                CacheControl.noStore()
+            )
+            .body(recurso);
     }
 }

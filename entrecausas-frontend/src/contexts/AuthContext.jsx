@@ -4,6 +4,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useState,
 } from "react";
 import { apiFetch } from "../services/Api.js";
@@ -61,6 +62,24 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
+  // Atualiza os dados do usuário após editar o perfil.
+  const atualizarUsuario = useCallback((dadosAtualizados) => {
+    if (!dadosAtualizados) {
+      return;
+    }
+
+    setUsuario((usuarioAtual) => {
+      if (!usuarioAtual) {
+        return usuarioAtual;
+      }
+
+      return {
+        ...usuarioAtual,
+        ...dadosAtualizados,
+      };
+    });
+  }, []);
+
   // Encerra a sessão no backend antes de limpar o usuário.
   const sair = useCallback(async () => {
     await apiFetch("/api/auth/logout", {
@@ -70,13 +89,18 @@ export function AuthProvider({ children }) {
     setUsuario(null);
   }, []);
 
-  const valor = {
-    usuario,
-    setUsuario,
-    carregando,
-    verificarSessao,
-    sair,
-  };
+  // Compartilha o estado de autenticação com a aplicação.
+  const valor = useMemo(
+    () => ({
+      usuario,
+      setUsuario,
+      carregando,
+      verificarSessao,
+      atualizarUsuario,
+      sair,
+    }),
+    [usuario, carregando, verificarSessao, atualizarUsuario, sair],
+  );
 
   return <AuthContext.Provider value={valor}>{children}</AuthContext.Provider>;
 }

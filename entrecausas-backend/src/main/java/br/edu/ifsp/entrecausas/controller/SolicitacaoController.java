@@ -1,10 +1,10 @@
-
 package br.edu.ifsp.entrecausas.controller;
 
 import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 import jakarta.validation.Valid;
 
 import br.edu.ifsp.entrecausas.dto.SolicitacaoAnaliseDTO;
+import br.edu.ifsp.entrecausas.dto.SolicitacaoComparacaoDTO;
 import br.edu.ifsp.entrecausas.dto.SolicitacaoCriacaoDTO;
 import br.edu.ifsp.entrecausas.dto.SolicitacaoResponseDTO;
 import br.edu.ifsp.entrecausas.dto.StatusSolicitacaoResponseDTO;
@@ -36,21 +37,20 @@ public class SolicitacaoController {
         this.solicitacaoService = solicitacaoService;
     }
 
-    // Cria uma nova solicitação.
+    // Impede a criação direta de solicitações.
+    // O cadastro e a edição de ONGs criam suas próprias solicitações.
     @PostMapping
     public ResponseEntity<SolicitacaoResponseDTO> criar(
             @Valid @RequestBody SolicitacaoCriacaoDTO dto) {
 
-        SolicitacaoResponseDTO response =
-            solicitacaoService.criar(dto);
-
         return ResponseEntity
-            .status(HttpStatus.CREATED)
-            .body(response);
+            .status(HttpStatus.FORBIDDEN)
+            .build();
     }
 
     // Lista todas as solicitações.
     @GetMapping
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
     public ResponseEntity<List<SolicitacaoResponseDTO>>
             listarTodas() {
 
@@ -61,6 +61,7 @@ public class SolicitacaoController {
 
     // Busca uma solicitação pelo ID.
     @GetMapping("/{id}")
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
     public ResponseEntity<SolicitacaoResponseDTO> buscarPorId(
             @PathVariable Long id) {
 
@@ -71,6 +72,7 @@ public class SolicitacaoController {
 
     // Lista solicitações pelo status.
     @GetMapping("/status/{idStatus}")
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
     public ResponseEntity<List<SolicitacaoResponseDTO>>
             listarPorStatus(
                 @PathVariable Long idStatus) {
@@ -82,6 +84,7 @@ public class SolicitacaoController {
 
     // Lista os status disponíveis para análise.
     @GetMapping("/status-opcoes")
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
     public ResponseEntity<List<StatusSolicitacaoResponseDTO>>
             listarStatus() {
 
@@ -92,6 +95,7 @@ public class SolicitacaoController {
 
     // Lista solicitações abertas por um usuário.
     @GetMapping("/usuario/{idUsuario}")
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
     public ResponseEntity<List<SolicitacaoResponseDTO>>
             listarPorUsuario(
                 @PathVariable Long idUsuario) {
@@ -103,6 +107,7 @@ public class SolicitacaoController {
 
     // Lista solicitações associadas a uma ONG.
     @GetMapping("/ong/{idOng}")
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
     public ResponseEntity<List<SolicitacaoResponseDTO>>
             listarPorOng(
                 @PathVariable Long idOng) {
@@ -112,8 +117,24 @@ public class SolicitacaoController {
         );
     }
 
+    // Consulta os dados atuais e propostos de uma edição.
+    @GetMapping("/{id}/comparacao")
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    public ResponseEntity<SolicitacaoComparacaoDTO> compararEdicao(
+            @PathVariable Long id,
+            Authentication authentication) {
+
+        return ResponseEntity.ok(
+            solicitacaoService.compararEdicao(
+                id,
+                authentication.getName()
+            )
+        );
+    }
+
     // Aprova ou rejeita uma solicitação.
     @PutMapping("/{id}/analise")
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
     public ResponseEntity<SolicitacaoResponseDTO> analisar(
             @PathVariable Long id,
             @Valid @RequestBody SolicitacaoAnaliseDTO dto,

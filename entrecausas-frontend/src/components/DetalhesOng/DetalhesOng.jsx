@@ -1,7 +1,21 @@
 import { useState } from "react";
 
+const iconesCategorias = {
+  Educacao: "fa-solid fa-graduation-cap",
+  Educação: "fa-solid fa-graduation-cap",
+  Solidariedade: "fa-solid fa-hand-holding-heart",
+  Cultura: "fa-solid fa-people-group",
+  Animais: "fa-solid fa-paw",
+  MeioAmbiente: "fa-solid fa-leaf",
+  "Meio Ambiente": "fa-solid fa-leaf",
+  Saude: "fa-solid fa-heart-pulse",
+  Saúde: "fa-solid fa-heart-pulse",
+  Esporte: "fa-solid fa-futbol",
+};
+
 function DetalhesOng({ ong }) {
   const [imagemAtual, setImagemAtual] = useState(0);
+  const [compartilhado, setCompartilhado] = useState(false);
 
   if (!ong) {
     return (
@@ -30,6 +44,11 @@ function DetalhesOng({ ong }) {
     alt: `Imagem da ${ong.nome}`,
   };
 
+  const iconeCategoria =
+    iconesCategorias[ong.categoriaPrincipal] || "fa-solid fa-circle-info";
+
+  const descricaoCompleta = ong.descricaoCompleta || ong.descricao || "";
+
   const irParaImagemAnterior = () => {
     if (imagens.length <= 1) return;
 
@@ -47,12 +66,53 @@ function DetalhesOng({ ong }) {
   };
 
   const linkMapa = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-    ong.localizacao,
+    ong.localizacao || "",
   )}`;
 
   const mapaEmbed = `https://www.google.com/maps?q=${encodeURIComponent(
-    ong.localizacao,
+    ong.localizacao || "",
   )}&output=embed`;
+
+  const compartilharOng = async () => {
+    const url = window.location.href;
+
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: ong.nome,
+          text: `Conheça a ONG ${ong.nome} no EntreCausas!`,
+          url,
+        });
+
+        return;
+      }
+
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url);
+      } else {
+        const campo = document.createElement("textarea");
+        campo.value = url;
+        campo.style.position = "fixed";
+        campo.style.opacity = "0";
+
+        document.body.appendChild(campo);
+        campo.select();
+
+        const copiado = document.execCommand("copy");
+        document.body.removeChild(campo);
+
+        if (!copiado) {
+          throw new Error("Não foi possível copiar o link.");
+        }
+      }
+
+      setCompartilhado(true);
+    } catch (error) {
+      if (error.name !== "AbortError") {
+        console.error("Erro ao compartilhar ONG:", error);
+      }
+    }
+  };
 
   return (
     <section
@@ -74,6 +134,7 @@ function DetalhesOng({ ong }) {
                 alt={imagemAtualObj.alt || `Imagem da ${ong.nome}`}
                 className="h-full w-full object-cover"
                 onError={(event) => {
+                  event.currentTarget.onerror = null;
                   event.currentTarget.src = "/img/default/ongs.png";
                 }}
               />
@@ -81,20 +142,20 @@ function DetalhesOng({ ong }) {
               {imagens.length > 1 && (
                 <div
                   className="
-      absolute
-      bottom-5
-      left-1/2
-      z-20
-      flex
-      -translate-x-1/2
-      items-center
-      gap-3
-      rounded-full
-      bg-base-100/95
-      px-3
-      py-2
-      shadow-lg
-    "
+                    absolute
+                    bottom-5
+                    left-1/2
+                    z-20
+                    flex
+                    -translate-x-1/2
+                    items-center
+                    gap-3
+                    rounded-full
+                    bg-base-100/95
+                    px-3
+                    py-2
+                    shadow-lg
+                  "
                 >
                   {/* Seta esquerda */}
                   <button
@@ -110,7 +171,7 @@ function DetalhesOng({ ong }) {
                   <div className="flex items-center gap-3">
                     {imagens.map((imagem, indice) => (
                       <button
-                        key={imagem.src}
+                        key={`${imagem.src}-${indice}`}
                         type="button"
                         onClick={() => setImagemAtual(indice)}
                         aria-label={`Ver imagem ${indice + 1}`}
@@ -118,15 +179,15 @@ function DetalhesOng({ ong }) {
                           indice === imagemAtual ? "true" : undefined
                         }
                         className={`
-            rounded-full
-            transition-all
-            duration-300
-            ${
-              indice === imagemAtual
-                ? "h-3 w-3 scale-110 bg-primary"
-                : "h-2.5 w-2.5 bg-primary/20 hover:bg-primary/40"
-            }
-          `}
+                          rounded-full
+                          transition-all
+                          duration-300
+                          ${
+                            indice === imagemAtual
+                              ? "h-3 w-3 scale-110 bg-primary"
+                              : "h-2.5 w-2.5 bg-primary/20 hover:bg-primary/40"
+                          }
+                        `}
                       ></button>
                     ))}
                   </div>
@@ -162,7 +223,7 @@ function DetalhesOng({ ong }) {
                   font-semibold
                 "
               >
-                <i className="fa-solid fa-paw" aria-hidden="true"></i>
+                <i className={iconeCategoria} aria-hidden="true"></i>
 
                 {ong.categoriaPrincipal}
               </span>
@@ -170,15 +231,27 @@ function DetalhesOng({ ong }) {
               <div className="flex gap-2">
                 <button
                   type="button"
+                  onClick={compartilharOng}
                   className="btn btn-square btn-outline border-base-300"
-                  aria-label="Compartilhar ONG"
+                  aria-label={
+                    compartilhado ? "Link da ONG copiado" : "Compartilhar ONG"
+                  }
+                  title={compartilhado ? "Link copiado" : "Compartilhar ONG"}
                 >
-                  <i className="fa-solid fa-share-nodes"></i>
+                  <i
+                    className={
+                      compartilhado
+                        ? "fa-solid fa-check"
+                        : "fa-solid fa-share-nodes"
+                    }
+                  ></i>
                 </button>
 
                 <button
                   type="button"
                   className="btn btn-outline border-base-300"
+                  disabled
+                  title="Funcionalidade de favoritos ainda não disponível"
                 >
                   <i className="fa-regular fa-heart"></i>
                   Salvar
@@ -355,8 +428,8 @@ function DetalhesOng({ ong }) {
               Sobre a {ong.nome}
             </h2>
 
-            <p className="max-w-3xl text-lg leading-relaxed text-base-content/70">
-              {ong.descricao}
+            <p className="max-w-3xl whitespace-pre-line text-lg leading-relaxed text-base-content/70">
+              {descricaoCompleta}
             </p>
 
             {/* Outras redes */}

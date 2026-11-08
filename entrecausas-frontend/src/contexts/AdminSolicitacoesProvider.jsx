@@ -57,6 +57,9 @@ function obterUrlImagem(caminho) {
 function converterSolicitacao(solicitacao) {
   return {
     id: solicitacao.idSolicitacao,
+    tipoSolicitacao: String(solicitacao.tipoSolicitacao || "CADASTRO")
+      .trim()
+      .toUpperCase(),
     idOng: solicitacao.idOng,
     nome: solicitacao.nomeOng,
     idUsuario: solicitacao.idUsuario,
@@ -100,7 +103,6 @@ function converterDetalhesOng(detalhes) {
     cnpj: detalhes.cnpj || "",
     telefone: detalhes.telefone || "",
     instagram: detalhes.instagram || "",
-
     cep: endereco.cep || "",
     logradouro: endereco.logradouro || "",
     numero: endereco.numero || "",
@@ -108,15 +110,11 @@ function converterDetalhesOng(detalhes) {
     bairro: endereco.bairro || "",
     cidade: endereco.cidade || "",
     estado: endereco.estado || "",
-
     localizacao: [endereco.cidade, endereco.estado].filter(Boolean).join(" - "),
-
     categorias,
     categoriaPrincipal: categorias[0] || "",
-
     descricao: descricaoCompleta?.texto || "",
     descricaoCurta: descricaoCurta?.texto || "",
-
     imagens,
   };
 }
@@ -168,7 +166,6 @@ export function AdminSolicitacoesProvider({ children }) {
 
     try {
       const dados = await apiFetch("/api/solicitacoes");
-
       const solicitacoesCompletas = await carregarDetalhesSolicitacoes(dados);
 
       setSolicitacoes(solicitacoesCompletas);
@@ -225,6 +222,36 @@ export function AdminSolicitacoesProvider({ children }) {
       ativo = false;
     };
   }, [carregandoSessao, ehAdministrador]);
+
+  // Consulta a comparação de uma edição somente quando solicitada.
+  const carregarComparacao = useCallback(
+    async (id) => {
+      if (!ehAdministrador) {
+        throw new Error("Apenas administradores podem comparar solicitações.");
+      }
+
+      const comparacao = await apiFetch(`/api/solicitacoes/${id}/comparacao`);
+
+      return {
+        idSolicitacao: comparacao.idSolicitacao,
+        idOng: comparacao.idOng,
+        dadosAtuais: converterDetalhesOng(comparacao.dadosAtuais),
+        dadosPropostos: {
+          ...comparacao.dadosPropostos,
+          categorias: comparacao.dadosPropostos?.categorias || [],
+          imagens: (comparacao.dadosPropostos?.imagens || []).map(
+            (caminho, indice) => ({
+              id: `${indice}-${caminho}`,
+              caminho,
+              src: obterUrlImagem(caminho),
+              alt: "Imagem proposta para a ONG",
+            }),
+          ),
+        },
+      };
+    },
+    [ehAdministrador],
+  );
 
   // Aprova ou rejeita uma solicitação pendente.
   const atualizarStatus = useCallback(
@@ -306,6 +333,7 @@ export function AdminSolicitacoesProvider({ children }) {
       solicitacoes: ehAdministrador ? solicitacoes : [],
       atualizarStatus,
       carregarSolicitacoes,
+      carregarComparacao,
       carregando: carregandoSessao || (ehAdministrador && carregando),
       erro: ehAdministrador ? erro : "",
       statusOpcoes: ehAdministrador ? statusOpcoes : [],
@@ -314,6 +342,7 @@ export function AdminSolicitacoesProvider({ children }) {
       solicitacoes,
       atualizarStatus,
       carregarSolicitacoes,
+      carregarComparacao,
       carregandoSessao,
       carregando,
       ehAdministrador,
