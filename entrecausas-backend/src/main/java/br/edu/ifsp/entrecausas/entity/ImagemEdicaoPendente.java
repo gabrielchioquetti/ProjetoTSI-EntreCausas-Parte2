@@ -1,4 +1,3 @@
-
 package br.edu.ifsp.entrecausas.entity;
 
 import jakarta.persistence.Column;

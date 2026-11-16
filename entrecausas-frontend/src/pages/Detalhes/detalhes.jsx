@@ -81,7 +81,10 @@ function adaptarOng(dados) {
     descricao: resumo?.texto || sobre?.texto || "",
     descricaoCompleta: sobre?.texto || "",
     instagram: linkInstagram,
+
+    // Dados utilizados no acompanhamento das solicitações.
     statusSolicitacao: dados.statusSolicitacao,
+    tipoSolicitacao: dados.tipoSolicitacao,
     dataAnalise: dados.dataAnalise,
     motivoRejeicao: dados.motivoRejeicao,
     publicada: dados.publicada === true,
@@ -108,84 +111,127 @@ function formatarData(data) {
 // Exibe o acompanhamento da solicitação da ONG.
 function StatusMinhaOng({ ong }) {
   const status = ong.statusSolicitacao?.toUpperCase();
+  const tipo = ong.tipoSolicitacao?.toUpperCase();
   const publicada = ong.publicada === true;
 
-  const configuracoes = {
-    PENDENTE: {
-      titulo: "Aguardando análise",
-      descricao:
-        "Sua ONG foi cadastrada e está aguardando a análise da equipe do EntreCausas.",
+  const aprovada = ["APROVADO", "APROVADA"].includes(status);
+
+  const rejeitada = ["REJEITADO", "REJEITADA", "REPROVADA"].includes(status);
+
+  const estilos = {
+    pendente: {
       estilo: "border-warning/30 bg-warning/10",
       icone: "fa-solid fa-clock",
     },
-
-    APROVADO: {
-      titulo: "ONG aprovada",
-      descricao: "Sua solicitação foi aprovada pela equipe do EntreCausas.",
+    aprovada: {
       estilo: "border-success/30 bg-success/10",
       icone: "fa-solid fa-circle-check",
     },
-
-    APROVADA: {
-      titulo: "ONG aprovada",
-      descricao: "Sua solicitação foi aprovada pela equipe do EntreCausas.",
-      estilo: "border-success/30 bg-success/10",
-      icone: "fa-solid fa-circle-check",
-    },
-
-    REJEITADO: {
-      titulo: "Solicitação rejeitada",
-      descricao:
-        "Sua solicitação foi rejeitada. Confira o motivo informado pela equipe responsável.",
+    rejeitada: {
       estilo: "border-error/30 bg-error/10",
       icone: "fa-solid fa-circle-exclamation",
     },
-
-    REJEITADA: {
-      titulo: "Solicitação rejeitada",
-      descricao:
-        "Sua solicitação foi rejeitada. Confira o motivo informado pela equipe responsável.",
-      estilo: "border-error/30 bg-error/10",
-      icone: "fa-solid fa-circle-exclamation",
-    },
-
-    REPROVADA: {
-      titulo: "Solicitação reprovada",
-      descricao:
-        "Sua solicitação foi reprovada. Confira o motivo informado pela equipe responsável.",
-      estilo: "border-error/30 bg-error/10",
-      icone: "fa-solid fa-circle-exclamation",
+    padrao: {
+      estilo: "border-base-300 bg-base-200",
+      icone: "fa-solid fa-circle-info",
     },
   };
 
-  const configuracaoPadrao = configuracoes[status] || {
+  let configuracao = {
     titulo: "Situação da solicitação",
     descricao: status
       ? `Status atual: ${status}`
       : "Não foi possível identificar o status da solicitação.",
-    estilo: "border-base-300 bg-base-200",
-    icone: "fa-solid fa-circle-info",
+    ...estilos.padrao,
   };
 
-  // Diferencia o estado da publicação da última solicitação.
-  const configuracao =
-    publicada && status === "PENDENTE"
-      ? {
-          titulo: "Alteração aguardando análise",
-          descricao:
-            "Sua ONG continua publicada no EntreCausas. As alterações enviadas serão aplicadas após a aprovação da equipe.",
-          estilo: "border-warning/30 bg-warning/10",
-          icone: "fa-solid fa-clock",
-        }
-      : publicada && ["REJEITADO", "REJEITADA", "REPROVADA"].includes(status)
+  // Diferencia o tipo de solicitação enviado ao administrador.
+  if (tipo === "EXCLUSAO") {
+    if (status === "PENDENTE") {
+      configuracao = {
+        titulo: "Exclusão aguardando análise",
+        descricao:
+          "Sua solicitação de exclusão está aguardando análise da equipe do EntreCausas. A organização permanece ativa enquanto a solicitação não for aprovada.",
+        ...estilos.pendente,
+      };
+    } else if (aprovada) {
+      configuracao = {
+        titulo: "Exclusão aprovada",
+        descricao:
+          "A solicitação de exclusão foi aprovada. Sua organização foi desativada e deixou de aparecer publicamente no EntreCausas. O histórico permanece preservado.",
+        ...estilos.aprovada,
+      };
+    } else if (rejeitada) {
+      configuracao = {
+        titulo: "Exclusão rejeitada",
+        descricao:
+          "Sua solicitação de exclusão foi rejeitada. A organização permanece ativa e seus dados publicados não foram removidos.",
+        ...estilos.rejeitada,
+      };
+    }
+  } else if (tipo === "EDICAO") {
+    if (status === "PENDENTE") {
+      configuracao = {
+        titulo: "Alteração aguardando análise",
+        descricao: publicada
+          ? "Sua ONG continua publicada no EntreCausas. As alterações enviadas serão aplicadas após a aprovação da equipe."
+          : "Sua solicitação de alteração está aguardando análise da equipe do EntreCausas.",
+        ...estilos.pendente,
+      };
+    } else if (aprovada) {
+      configuracao = {
+        titulo: "Alteração aprovada",
+        descricao:
+          "As alterações da sua organização foram aprovadas pela equipe do EntreCausas.",
+        ...estilos.aprovada,
+      };
+    } else if (rejeitada) {
+      configuracao = {
+        titulo: "Alteração rejeitada",
+        descricao: publicada
+          ? "Sua ONG continua publicada com os dados anteriores. Confira o motivo da rejeição da alteração."
+          : "Sua solicitação de alteração foi rejeitada. Confira o motivo informado pela equipe responsável.",
+        ...estilos.rejeitada,
+      };
+    }
+  } else {
+    // Mantém o acompanhamento de cadastro e de registros antigos.
+    if (status === "PENDENTE") {
+      configuracao = publicada
+        ? {
+            titulo: "Alteração aguardando análise",
+            descricao:
+              "Sua ONG continua publicada no EntreCausas. A solicitação enviada está aguardando análise.",
+            ...estilos.pendente,
+          }
+        : {
+            titulo: "Aguardando análise",
+            descricao:
+              "Sua ONG foi cadastrada e está aguardando a análise da equipe do EntreCausas.",
+            ...estilos.pendente,
+          };
+    } else if (aprovada) {
+      configuracao = {
+        titulo: "ONG aprovada",
+        descricao: "Sua solicitação foi aprovada pela equipe do EntreCausas.",
+        ...estilos.aprovada,
+      };
+    } else if (rejeitada) {
+      configuracao = publicada
         ? {
             titulo: "Alteração rejeitada",
             descricao:
               "Sua ONG continua publicada com os dados anteriores. Confira o motivo da rejeição da alteração.",
-            estilo: "border-error/30 bg-error/10",
-            icone: "fa-solid fa-circle-exclamation",
+            ...estilos.rejeitada,
           }
-        : configuracaoPadrao;
+        : {
+            titulo: "Solicitação rejeitada",
+            descricao:
+              "Sua solicitação foi rejeitada. Confira o motivo informado pela equipe responsável.",
+            ...estilos.rejeitada,
+          };
+    }
+  }
 
   const dataAnalise = formatarData(ong.dataAnalise);
 
@@ -212,13 +258,12 @@ function StatusMinhaOng({ ong }) {
               </p>
 
               {/* Orienta a correção de cadastros rejeitados. */}
-              {!publicada &&
-                ["REJEITADO", "REJEITADA", "REPROVADA"].includes(status) && (
-                  <p className="mt-3 text-sm text-base-content/70">
-                    Você pode corrigir os dados da sua organização e enviar uma
-                    nova solicitação para análise.
-                  </p>
-                )}
+              {!publicada && tipo !== "EXCLUSAO" && rejeitada && (
+                <p className="mt-3 text-sm text-base-content/70">
+                  Você pode corrigir os dados da sua organização e enviar uma
+                  nova solicitação para análise.
+                </p>
+              )}
 
               {dataAnalise && (
                 <p className="mt-3 text-sm text-base-content/70">
@@ -226,12 +271,11 @@ function StatusMinhaOng({ ong }) {
                 </p>
               )}
 
-              {ong.motivoRejeicao &&
-                ["REJEITADO", "REJEITADA", "REPROVADA"].includes(status) && (
-                  <p className="mt-3 text-sm text-base-content/70">
-                    <strong>Motivo da rejeição:</strong> {ong.motivoRejeicao}
-                  </p>
-                )}
+              {ong.motivoRejeicao && rejeitada && (
+                <p className="mt-3 text-sm text-base-content/70">
+                  <strong>Motivo da rejeição:</strong> {ong.motivoRejeicao}
+                </p>
+              )}
             </div>
           </div>
         </div>

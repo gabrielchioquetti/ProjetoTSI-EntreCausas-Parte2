@@ -13,9 +13,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 import br.edu.ifsp.entrecausas.dto.OngDetalhesAdminResponseDTO;
 import br.edu.ifsp.entrecausas.dto.OngMinhaResponseDTO;
-import br.edu.ifsp.entrecausas.dto.OngRequestDTO;
 import br.edu.ifsp.entrecausas.dto.OngResponseDTO;
 import br.edu.ifsp.entrecausas.dto.OngPublicaResponseDTO;
+import br.edu.ifsp.entrecausas.dto.SolicitacaoExclusaoDTO;
 import br.edu.ifsp.entrecausas.service.OngService;
 
 import jakarta.validation.Valid;
@@ -32,6 +32,7 @@ public class OngController {
 
     // Cadastra uma ONG e cria uma solicitação pendente.
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<OngResponseDTO> cadastrar(
             Authentication authentication,
             @RequestParam String nome,
@@ -82,6 +83,7 @@ public class OngController {
         value = "/{id}/solicitar-edicao",
         consumes = MediaType.MULTIPART_FORM_DATA_VALUE
     )
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Long> solicitarEdicao(
             Authentication authentication,
             @PathVariable Long id,
@@ -135,6 +137,35 @@ public class OngController {
             .body(idSolicitacao);
     }
 
+    // Envia uma solicitação de exclusão lógica para análise administrativa.
+    @PostMapping(
+        value = "/{id}/solicitar-exclusao",
+        consumes = MediaType.APPLICATION_JSON_VALUE
+    )
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Long> solicitarExclusao(
+            Authentication authentication,
+            @PathVariable Long id,
+            @Valid @RequestBody SolicitacaoExclusaoDTO dto) {
+
+        // Exige uma sessão autenticada.
+        if (!autenticado(authentication)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        // A ONG permanece ativa até a aprovação administrativa.
+        Long idSolicitacao = ongService.solicitarExclusao(
+            id,
+            authentication.getName(),
+            dto.motivoExclusao(),
+            dto.detalhesExclusao()
+        );
+
+        return ResponseEntity
+            .status(HttpStatus.CREATED)
+            .body(idSolicitacao);
+    }
+
     // Lista somente as ONGs aprovadas.
     @GetMapping
     public ResponseEntity<List<OngPublicaResponseDTO>> listarTodas() {
@@ -155,6 +186,7 @@ public class OngController {
 
     // Busca a ONG pertencente ao usuário autenticado.
     @GetMapping("/minha")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<OngMinhaResponseDTO> buscarMinhaOng(
             Authentication authentication) {
 
@@ -184,8 +216,7 @@ public class OngController {
     // Impede alterações diretas sem aprovação administrativa.
     @PutMapping("/{id}")
     public ResponseEntity<Void> atualizar(
-            @PathVariable Long id,
-            @Valid @RequestBody OngRequestDTO dto) {
+            @PathVariable Long id) {
 
         return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
     }

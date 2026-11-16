@@ -52,7 +52,7 @@ public class Solicitacao {
     )
     private StatusSolicitacao status;
 
-    // Identifica se a solicitação é de cadastro ou edição.
+    // Identifica se a solicitação é de cadastro, edição ou exclusão.
     // Permanece opcional para compatibilidade com registros antigos.
     @Column(name = "tipo_solicitacao", length = 20)
     private String tipoSolicitacao;
@@ -67,6 +67,20 @@ public class Solicitacao {
         columnDefinition = "TEXT"
     )
     private String motivoRejeicao;
+
+    // Motivo informado pelo usuário ao solicitar a exclusão da ONG.
+    @Column(
+        name = "motivo_exclusao",
+        columnDefinition = "TEXT"
+    )
+    private String motivoExclusao;
+
+    // Detalhes informados pelo usuário sobre a exclusão da ONG.
+    @Column(
+        name = "detalhes_exclusao",
+        columnDefinition = "TEXT"
+    )
+    private String detalhesExclusao;
 
     // Construtor padrão exigido pelo JPA.
     public Solicitacao() {
@@ -165,5 +179,21 @@ public class Solicitacao {
 
     public void setMotivoRejeicao(String motivoRejeicao) {
         this.motivoRejeicao = motivoRejeicao;
+    }
+
+    public String getMotivoExclusao() {
+        return motivoExclusao;
+    }
+
+    public void setMotivoExclusao(String motivoExclusao) {
+        this.motivoExclusao = motivoExclusao;
+    }
+
+    public String getDetalhesExclusao() {
+        return detalhesExclusao;
+    }
+
+    public void setDetalhesExclusao(String detalhesExclusao) {
+        this.detalhesExclusao = detalhesExclusao;
     }
 }

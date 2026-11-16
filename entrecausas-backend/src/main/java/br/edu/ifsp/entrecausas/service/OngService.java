@@ -119,6 +119,7 @@ public class OngService {
         this.passwordEncoder = passwordEncoder;
     }
 
+    
     // Cadastra uma ONG com os dados das três etapas.
     @Transactional
     public OngResponseDTO cadastrar(
@@ -143,7 +144,10 @@ public class OngService {
         validarObrigatorio(nome, "Informe o nome da ONG.");
         validarObrigatorio(cnpjInformado, "Informe o CNPJ.");
         validarObrigatorio(telefoneInformado, "Informe o telefone.");
-        validarObrigatorio(descricaoCurta, "Informe a descrição curta.");
+        validarObrigatorio(
+            descricaoCurta,
+            "Informe a descrição curta."
+        );
         validarObrigatorio(
             descricaoCompleta,
             "Informe a descrição completa."
@@ -171,6 +175,63 @@ public class OngService {
         String cnpjHash = hmacCryptoUtil.gerarHash(cnpj);
         String telefoneHash = hmacCryptoUtil.gerarHash(telefone);
 
+        // Obtém o usuário pela sessão autenticada.
+        Usuario usuario = usuarioRepository.findByEmail(emailUsuario)
+            .orElseThrow(() ->
+                new RecursoNaoEncontradoException(
+                    "Usuário autenticado não encontrado."
+                )
+            );
+
+        // Bloqueia o responsável para impedir cadastros simultâneos.
+        usuario = entityManager.find(
+            Usuario.class,
+            usuario.getIdUsuario(),
+            LockModeType.PESSIMISTIC_WRITE
+        );
+
+        if (usuario == null) {
+            throw new RecursoNaoEncontradoException(
+                "Usuário autenticado não encontrado."
+            );
+        }
+
+        // Recupera todas as ONGs anteriores do responsável.
+        List<Ong> ongsAnteriores =
+            ongRepository.findByUsuarioIdUsuarioOrderByIdOngDesc(
+                usuario.getIdUsuario()
+            );
+
+        // Um novo cadastro só é permitido após o encerramento
+        // aprovado de todas as organizações anteriores.
+        for (Ong ongAnterior : ongsAnteriores) {
+
+            List<Solicitacao> historico =
+                solicitacaoRepository.findByOngIdOng(
+                    ongAnterior.getIdOng()
+                );
+
+            boolean encerramentoAprovado = historico.stream()
+                .anyMatch(solicitacao ->
+                    "EXCLUSAO".equalsIgnoreCase(
+                        solicitacao.getTipoSolicitacao()
+                    )
+                    && "APROVADO".equalsIgnoreCase(
+                        solicitacao.getStatus().getNome()
+                    )
+                );
+
+            if (ongAnterior.isAtiva() || !encerramentoAprovado) {
+                throw new ConflitoException(
+                    "Sua conta já possui uma ONG vinculada. "
+                    + "Para cadastrar outra organização, "
+                    + "solicite o encerramento da atual "
+                    + "e aguarde a aprovação administrativa."
+                );
+            }
+        }
+
+        // Verifica a unicidade dos documentos.
         if (ongRepository.existsByCnpjHash(cnpjHash)) {
             throw new ConflitoException(
                 "O CNPJ informado já está cadastrado."
@@ -180,23 +241,6 @@ public class OngService {
         if (ongRepository.existsByTelefoneHash(telefoneHash)) {
             throw new ConflitoException(
                 "O telefone informado já está cadastrado."
-            );
-        }
-
-        // Obtém o usuário pela sessão autenticada.
-        Usuario usuario = usuarioRepository.findByEmail(emailUsuario)
-            .orElseThrow(() ->
-                new RecursoNaoEncontradoException(
-                    "Usuário autenticado não encontrado."
-                )
-            );
-
-        // Um usuário pode gerenciar somente uma ONG.
-        if (ongRepository.existsByUsuarioIdUsuario(
-                usuario.getIdUsuario())) {
-
-            throw new ConflitoException(
-                "Sua conta já possui uma ONG cadastrada."
             );
         }
 
@@ -237,6 +281,10 @@ public class OngService {
         ong.setInstagram(normalizarOpcional(instagram));
         ong.setUsuario(usuario);
 
+        // Toda nova ONG começa inativa.
+        // Somente a aprovação administrativa poderá ativá-la.
+        ong.setAtiva(false);
+
         // Salva a descrição curta.
         Descricao resumo = new Descricao();
         resumo.setTipoDescricao("RESUMO");
@@ -264,6 +312,7 @@ public class OngService {
 
         // Associa as categorias existentes.
         for (Categoria categoria : categorias) {
+
             OngCategoria associacao = new OngCategoria();
             associacao.setCategoria(categoria);
             ong.addCategoria(associacao);
@@ -310,7 +359,7 @@ public class OngService {
 
         return converterParaDTO(ongSalva);
     }
-
+    
     // Registra uma proposta de edição sem alterar a ONG publicada.
     @Transactional
     public Long solicitarEdicao(
@@ -340,8 +389,15 @@ public class OngService {
                 )
             );
 
+        // Bloqueia primeiro o usuário para manter a ordem
+        // de bloqueio utilizada nas operações de cadastro e análise.
+        usuario = entityManager.find(
+            Usuario.class,
+            usuario.getIdUsuario(),
+            LockModeType.PESSIMISTIC_WRITE
+        );
+
         // Bloqueia a ONG durante a criação da solicitação.
-        // Isso impede duas solicitações simultâneas para a mesma ONG.
         Ong ong = entityManager.find(
             Ong.class,
             idOng,
@@ -367,7 +423,10 @@ public class OngService {
         // Confirma a senha atual antes de registrar a solicitação.
         if (senhaAtual == null
                 || senhaAtual.isBlank()
-                || !passwordEncoder.matches(senhaAtual, usuario.getSenha())) {
+                || !passwordEncoder.matches(
+                    senhaAtual,
+                    usuario.getSenha()
+                )) {
 
             throw new ResponseStatusException(
                 HttpStatus.UNAUTHORIZED,
@@ -375,30 +434,29 @@ public class OngService {
             );
         }
 
-        // Impede uma nova edição enquanto existir outra pendente.
-        if (solicitacaoRepository
-                .existsByOngIdOngAndTipoSolicitacaoAndStatusNome(
-                    idOng,
-                    "EDICAO",
-                    "PENDENTE"
-                )) {
+        // Impede uma nova edição enquanto existir outra
+        // solicitação aguardando análise.
+        if (solicitacaoRepository.existsByOngIdOngAndStatusNome(
+                idOng,
+                "PENDENTE")) {
 
             throw new ConflitoException(
-                "Esta ONG já possui uma edição aguardando análise."
+                "Esta ONG já possui uma solicitação aguardando análise."
             );
         }
 
-        // Permite editar cadastros aprovados ou rejeitados.
-        // Cadastros ainda pendentes não podem ser reenviados.
-        List<Solicitacao> solicitacoesCadastro =
-            solicitacaoRepository.findByOngIdOng(idOng)
-                .stream()
-                .filter(solicitacao ->
-                    !"EDICAO".equalsIgnoreCase(
-                        solicitacao.getTipoSolicitacao()
-                    )
+        List<Solicitacao> historico =
+            solicitacaoRepository.findByOngIdOng(idOng);
+
+        // Considera somente as solicitações de cadastro.
+        List<Solicitacao> solicitacoesCadastro = historico.stream()
+            .filter(solicitacao ->
+                solicitacao.getTipoSolicitacao() == null
+                || "CADASTRO".equalsIgnoreCase(
+                    solicitacao.getTipoSolicitacao()
                 )
-                .toList();
+            )
+            .toList();
 
         boolean cadastroAprovado = solicitacoesCadastro.stream()
             .anyMatch(solicitacao ->
@@ -421,10 +479,66 @@ public class OngService {
                 )
             );
 
-        if (cadastroPendente || (!cadastroAprovado && !cadastroRejeitado)) {
+        if (cadastroPendente
+                || (!cadastroAprovado && !cadastroRejeitado)) {
+
             throw new ConflitoException(
                 "A ONG precisa ter seu cadastro analisado "
                 + "antes de solicitar alterações."
+            );
+        }
+        
+        // Uma exclusão aprovada impede novas alterações.
+        boolean exclusaoAprovada = historico.stream()
+            .anyMatch(solicitacao ->
+                "EXCLUSAO".equalsIgnoreCase(
+                    solicitacao.getTipoSolicitacao()
+                )
+                && "APROVADO".equalsIgnoreCase(
+                    solicitacao.getStatus().getNome()
+                )
+            );
+
+        if (exclusaoAprovada) {
+            throw new ConflitoException(
+                "Não é possível editar uma ONG cujo "
+                + "encerramento já foi aprovado."
+            );
+        }
+
+        // Identifica se o cadastro foi regularizado.
+        boolean correcaoAprovada = historico.stream()
+            .anyMatch(solicitacao ->
+                "EDICAO".equalsIgnoreCase(
+                    solicitacao.getTipoSolicitacao()
+                )
+                && "APROVADO".equalsIgnoreCase(
+                    solicitacao.getStatus().getNome()
+                )
+            );
+
+        // Permite corrigir um cadastro rejeitado
+        // somente enquanto ele não foi regularizado.
+        boolean cadastroRejeitadoNaoRegularizado =
+            cadastroRejeitado
+            && !cadastroAprovado
+            && !correcaoAprovada;
+
+        if (!ong.isAtiva() && !cadastroRejeitadoNaoRegularizado) {
+            throw new ConflitoException(
+                "Esta ONG não está disponível para edição."
+            );
+        }
+
+        // Impede corrigir um cadastro rejeitado quando
+        // o responsável já possui outra ONG ativa.
+        if (!ong.isAtiva()
+                && ongRepository.existsByUsuarioIdUsuarioAndAtivaTrue(
+                    usuario.getIdUsuario()
+                )) {
+
+            throw new ConflitoException(
+                "Sua conta já possui outra ONG ativa."
             );
         }
 
@@ -582,9 +696,12 @@ public class OngService {
         String dadosCriptografados;
 
         try {
+
             String json = objectMapper.writeValueAsString(dados);
             dadosCriptografados = aesCryptoUtil.encrypt(json);
+
         } catch (JacksonException e) {
+
             throw new ResponseStatusException(
                 HttpStatus.INTERNAL_SERVER_ERROR,
                 "Não foi possível preparar a proposta de edição.",
@@ -593,33 +710,51 @@ public class OngService {
         }
 
         // Cria a solicitação na mesma transação.
-        Solicitacao solicitacao = new Solicitacao(ong, usuario, statusPendente);
+        Solicitacao solicitacao = new Solicitacao(
+            ong,
+            usuario,
+            statusPendente
+        );
 
         solicitacao.setTipoSolicitacao("EDICAO");
 
-        Solicitacao solicitacaoSalva = solicitacaoRepository.saveAndFlush(solicitacao);
+        Solicitacao solicitacaoSalva =
+            solicitacaoRepository.saveAndFlush(solicitacao);
 
         // Armazena os dados propostos separadamente.
-        OngEdicaoPendente edicao = new OngEdicaoPendente(solicitacaoSalva, dadosCriptografados);
+        OngEdicaoPendente edicao = new OngEdicaoPendente(
+            solicitacaoSalva,
+            dadosCriptografados
+        );
 
         ongEdicaoPendenteRepository.saveAndFlush(edicao);
 
         // Vincula somente os arquivos novos à solicitação.
         // As imagens antigas continuam vinculadas à ONG.
-        List<ImagemEdicaoPendente> imagensPendentes = new ArrayList<>();
+        List<ImagemEdicaoPendente> imagensPendentes =
+            new ArrayList<>();
+
         for (String nomeArquivo : arquivosSalvos) {
-            ImagemEdicaoPendente imagemPendente = new ImagemEdicaoPendente(nomeArquivo, solicitacaoSalva);
+
+            ImagemEdicaoPendente imagemPendente =
+                new ImagemEdicaoPendente(
+                    nomeArquivo,
+                    solicitacaoSalva
+                );
+
             imagensPendentes.add(imagemPendente);
         }
 
         // Persiste os vínculos na mesma transação.
         if (!imagensPendentes.isEmpty()) {
-            imagemEdicaoPendenteRepository.saveAll(imagensPendentes);
+            imagemEdicaoPendenteRepository.saveAll(
+                imagensPendentes
+            );
         }
 
         return solicitacaoSalva.getIdSolicitacao();
-
     }
+
     
     // Lista somente as ONGs aprovadas.
     @Transactional(readOnly = true)
@@ -651,12 +786,12 @@ public class OngService {
         return converterParaDTOPublico(ong);
     }
     
+    
     // Busca a ONG pertencente ao usuário autenticado.
     @Transactional(readOnly = true)
     public Optional<OngMinhaResponseDTO> buscarMinhaOng(
             String emailUsuario) {
 
-        // Identifica o usuário pela autenticação.
         Usuario usuario = usuarioRepository.findByEmail(emailUsuario)
             .orElseThrow(() ->
                 new RecursoNaoEncontradoException(
@@ -664,62 +799,99 @@ public class OngService {
                 )
             );
 
-        // Busca somente a ONG vinculada à conta.
-        return ongRepository.findByUsuarioIdUsuario(
+        List<Ong> ongs = ongRepository
+            .findByUsuarioIdUsuarioOrderByIdOngDesc(
                 usuario.getIdUsuario()
-            )
-            .map(ong -> {
+            );
 
-                // Considera a solicitação com maior ID como a mais recente.
-                Optional<Solicitacao> ultima =
+        // Prioriza a ONG ativa e depois a mais recente
+        // que ainda não teve encerramento aprovado.
+        Optional<Ong> ongAtual = ongs.stream()
+            .filter(ong -> {
+
+                List<Solicitacao> historico =
                     solicitacaoRepository.findByOngIdOng(
-                            ong.getIdOng()
+                        ong.getIdOng()
+                    );
+
+                boolean encerramentoAprovado = historico.stream()
+                    .anyMatch(s ->
+                        "EXCLUSAO".equalsIgnoreCase(
+                            s.getTipoSolicitacao()
                         )
-                        .stream()
-                        .max(Comparator.comparing(
-                            (Solicitacao solicitacao) ->
-                                solicitacao.getIdSolicitacao()
-                        ));
+                        && "APROVADO".equalsIgnoreCase(
+                            s.getStatus().getNome()
+                        )
+                    );
 
-                EnderecoResponseDTO enderecoDTO =
-                    converterEndereco(ong);
+                if (encerramentoAprovado) {
+                    return false;
+                }
 
-                List<DescricaoResponseDTO> descricoes =
-                    converterDescricoes(ong);
+                if (ong.isAtiva()) {
+                    return true;
+                }
 
-                List<ImagemResponseDTO> imagens =
-                    converterImagens(ong);
+                return historico.stream()
+                    .anyMatch(s ->
+                        (s.getTipoSolicitacao() == null
+                            || "CADASTRO".equalsIgnoreCase(
+                                s.getTipoSolicitacao()
+                            ))
+                        && (
+                            "PENDENTE".equalsIgnoreCase(
+                                s.getStatus().getNome()
+                            )
+                            || "REJEITADO".equalsIgnoreCase(
+                                s.getStatus().getNome()
+                            )
+                        )
+                    );
+            })
+            .sorted(
+                Comparator.<Ong, Boolean>comparing(
+                    ong -> ong.isAtiva()
+                )
+                .reversed()
+                .thenComparing(
+                    ong -> ong.getIdOng(),
+                    Comparator.reverseOrder()
+                )
+            )
+            .findFirst();
 
-                List<OngCategoriaResponseDTO> categorias =
-                    converterCategorias(ong);
+        return ongAtual.map(ong -> {
 
-                // Retorna os dados da ONG e da última solicitação.
-                return new OngMinhaResponseDTO(
-                    ong.getIdOng(),
-                    ong.getNome(),
-                    aesCryptoUtil.decrypt(ong.getCnpj()),
-                    aesCryptoUtil.decrypt(ong.getTelefone()),
-                    ong.getInstagram(),
-                    enderecoDTO,
-                    descricoes,
-                    imagens,
-                    categorias,
-                    ultima.map(item ->
-                        item.getStatus().getNome()
-                    ).orElse(null),
-                    ultima.map(
-                        solicitacao -> solicitacao.getDataAnalise()
-                    ).orElse(null),
-                    ultima.map(
-                        solicitacao -> solicitacao.getMotivoRejeicao()
-                    ).orElse(null),
-                    ongPublicacaoService.ongEstaAprovada(ong.getIdOng()),
-                    ultima.map(
-                        solicitacao -> solicitacao.getTipoSolicitacao()
-                    ).orElse(null)
-                );
-            });
+            Optional<Solicitacao> ultima =
+                solicitacaoRepository.findByOngIdOng(
+                    ong.getIdOng()
+                )
+                .stream()
+                .max(Comparator.comparing(
+                    (Solicitacao solicitacao) -> solicitacao.getIdSolicitacao()
+                ));
+
+            return new OngMinhaResponseDTO(
+                ong.getIdOng(),
+                ong.getNome(),
+                aesCryptoUtil.decrypt(ong.getCnpj()),
+                aesCryptoUtil.decrypt(ong.getTelefone()),
+                ong.getInstagram(),
+                converterEndereco(ong),
+                converterDescricoes(ong),
+                converterImagens(ong),
+                converterCategorias(ong),
+                ultima.map(s -> s.getStatus().getNome()).orElse(null),
+                ultima.map(solicitacao -> solicitacao.getDataAnalise()).orElse(null),
+                ultima.map(solicitacao -> solicitacao.getMotivoRejeicao()).orElse(null),
+                ongPublicacaoService.ongEstaAprovada(
+                    ong.getIdOng()
+                ),
+                ultima.map(solicitacao -> solicitacao.getTipoSolicitacao()).orElse(null)
+            );
+        });
     }
+
 
     // Consulta os dados completos para análise administrativa.
     // O endpoint deve permitir acesso somente a administradores.
@@ -765,12 +937,163 @@ public class OngService {
         );
     }
 
-    // A exclusão direta permanece bloqueada.
-    public void deletar(Long id) {
-        throw new ResponseStatusException(
-            HttpStatus.FORBIDDEN,
-            "A exclusão direta de ONGs não está permitida."
+
+    
+    
+    // Solicita o encerramento de uma ONG ou cadastro rejeitado.
+    @Transactional
+    public Long solicitarExclusao(
+            Long idOng,
+            String emailUsuario,
+            String motivoExclusao,
+            String detalhesExclusao) {
+
+        Usuario usuario = usuarioRepository.findByEmail(emailUsuario)
+            .orElseThrow(() ->
+                new RecursoNaoEncontradoException(
+                    "Usuário autenticado não encontrado."
+                )
+            );
+
+        // Bloqueia primeiro o responsável.
+        usuario = entityManager.find(
+            Usuario.class,
+            usuario.getIdUsuario(),
+            LockModeType.PESSIMISTIC_WRITE
         );
+
+        if (usuario == null) {
+            throw new RecursoNaoEncontradoException(
+                "Usuário autenticado não encontrado."
+            );
+        }
+
+        // Bloqueia a ONG para impedir solicitações simultâneas.
+        Ong ong = entityManager.find(
+            Ong.class,
+            idOng,
+            LockModeType.PESSIMISTIC_WRITE
+        );
+
+        if (ong == null) {
+            throw new RecursoNaoEncontradoException(
+                "ONG não encontrada com o ID: " + idOng
+            );
+        }
+
+        // Somente o responsável pode solicitar o encerramento.
+        if (!ong.getUsuario().getIdUsuario()
+                .equals(usuario.getIdUsuario())) {
+
+            throw new ResponseStatusException(
+                HttpStatus.FORBIDDEN,
+                "Você não possui permissão para encerrar esta ONG."
+            );
+        }
+
+        validarObrigatorio(
+            motivoExclusao,
+            "Informe o motivo do encerramento."
+        );
+
+        validarObrigatorio(
+            detalhesExclusao,
+            "Informe os detalhes do encerramento."
+        );
+
+        // Impede solicitações simultâneas de qualquer tipo.
+        if (solicitacaoRepository.existsByOngIdOngAndStatusNome(
+                idOng,
+                "PENDENTE")) {
+
+            throw new ConflitoException(
+                "Esta ONG já possui uma solicitação aguardando análise."
+            );
+        }
+
+        List<Solicitacao> historico =
+            solicitacaoRepository.findByOngIdOng(idOng);
+
+        boolean cadastroRejeitado = historico.stream()
+            .anyMatch(s ->
+                (s.getTipoSolicitacao() == null
+                    || "CADASTRO".equalsIgnoreCase(
+                        s.getTipoSolicitacao()
+                    ))
+                && "REJEITADO".equalsIgnoreCase(
+                    s.getStatus().getNome()
+                )
+            );
+
+        boolean cadastroAprovado = historico.stream()
+            .anyMatch(s ->
+                (s.getTipoSolicitacao() == null
+                    || "CADASTRO".equalsIgnoreCase(
+                        s.getTipoSolicitacao()
+                    ))
+                && "APROVADO".equalsIgnoreCase(
+                    s.getStatus().getNome()
+                )
+            );
+
+        boolean correcaoAprovada = historico.stream()
+            .anyMatch(s ->
+                "EDICAO".equalsIgnoreCase(
+                    s.getTipoSolicitacao()
+                )
+                && "APROVADO".equalsIgnoreCase(
+                    s.getStatus().getNome()
+                )
+            );
+
+        boolean encerramentoAprovado = historico.stream()
+            .anyMatch(s ->
+                "EXCLUSAO".equalsIgnoreCase(
+                    s.getTipoSolicitacao()
+                )
+                && "APROVADO".equalsIgnoreCase(
+                    s.getStatus().getNome()
+                )
+            );
+
+        if (encerramentoAprovado) {
+            throw new ConflitoException(
+                "Esta ONG já teve seu encerramento aprovado."
+            );
+        }
+
+        // Uma ONG inativa só pode ser encerrada quando
+        // o cadastro foi rejeitado e ainda não foi regularizado.
+        boolean cadastroRejeitadoNaoRegularizado =
+            cadastroRejeitado
+            && !cadastroAprovado
+            && !correcaoAprovada;
+
+        if (!ong.isAtiva() && !cadastroRejeitadoNaoRegularizado) {
+            throw new ConflitoException(
+                "Somente uma ONG ativa ou um cadastro "
+                + "rejeitado pode solicitar encerramento."
+            );
+        }
+
+        StatusSolicitacao statusPendente =
+            buscarStatusPendente();
+
+        Solicitacao solicitacao = new Solicitacao(
+            ong,
+            usuario,
+            statusPendente
+        );
+
+        solicitacao.setTipoSolicitacao("EXCLUSAO");
+        solicitacao.setMotivoExclusao(motivoExclusao.trim());
+        solicitacao.setDetalhesExclusao(detalhesExclusao.trim());
+
+        Solicitacao salva =
+            solicitacaoRepository.saveAndFlush(solicitacao);
+
+        // A ONG permanece na situação atual até a análise.
+        return salva.getIdSolicitacao();
     }
 
     // Converte o endereço da organização.

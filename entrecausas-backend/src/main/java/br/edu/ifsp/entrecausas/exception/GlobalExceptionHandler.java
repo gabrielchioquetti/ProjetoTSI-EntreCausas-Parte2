@@ -5,6 +5,11 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -114,8 +119,7 @@ public class GlobalExceptionHandler {
     // Trata conflitos de dados.
     @ExceptionHandler(ConflitoException.class)
     public ResponseEntity<Map<String, Object>>
-    tratarConflito(
-            ConflitoException ex) {
+    tratarConflito(ConflitoException ex) {
 
         return criarResposta(
             HttpStatus.CONFLICT,
@@ -136,6 +140,55 @@ public class GlobalExceptionHandler {
             HttpStatus.CONFLICT,
             "Não foi possível salvar os dados. "
             + "Verifique se algum dado já está cadastrado.",
+            null
+        );
+    }
+
+    // Trata acessos não autorizados.
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<Map<String, Object>>
+    tratarAcessoNegado(AccessDeniedException ex) {
+
+        Authentication autenticacao =
+            SecurityContextHolder.getContext()
+                .getAuthentication();
+
+        boolean autenticado =
+            autenticacao != null
+            && autenticacao.isAuthenticated()
+            && !(autenticacao instanceof AnonymousAuthenticationToken);
+
+        if (!autenticado) {
+            return criarResposta(
+                HttpStatus.UNAUTHORIZED,
+                "É necessário entrar na conta para acessar este recurso.",
+                null
+            );
+        }
+
+        return criarResposta(
+            HttpStatus.FORBIDDEN,
+            "Você não tem permissão para realizar esta operação.",
+            null
+        );
+    }
+
+    // Trata exceções que já possuem um status HTTP definido.
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<Map<String, Object>>
+    tratarStatusHttp(ResponseStatusException ex) {
+
+        HttpStatus status = HttpStatus.valueOf(
+            ex.getStatusCode().value()
+        );
+
+        String mensagem = ex.getReason() != null
+            ? ex.getReason()
+            : "Não foi possível realizar a operação.";
+
+        return criarResposta(
+            status,
+            mensagem,
             null
         );
     }
@@ -192,26 +245,5 @@ public class GlobalExceptionHandler {
         return ResponseEntity
             .status(status)
             .body(resposta);
-    }
-
-    
-    // Trata exceções que já possuem um status HTTP definido.
-    @ExceptionHandler(ResponseStatusException.class)
-    public ResponseEntity<Map<String, Object>>
-    tratarStatusHttp(ResponseStatusException ex) {
-
-        HttpStatus status = HttpStatus.valueOf(
-            ex.getStatusCode().value()
-        );
-
-        String mensagem = ex.getReason() != null
-            ? ex.getReason()
-            : "Não foi possível realizar a operação.";
-
-        return criarResposta(
-            status,
-            mensagem,
-            null
-        );
     }
 }

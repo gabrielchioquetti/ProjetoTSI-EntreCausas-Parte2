@@ -19,17 +19,27 @@ const configuracaoStatus = {
   },
   aprovada: {
     titulo: "Solicitações Aprovadas",
-    descricao: "Solicitações de cadastro e edição aprovadas.",
+    descricao: "Solicitações de cadastro, edição e exclusão aprovadas.",
     label: "Aprovada",
     classe: "border-green-200 bg-green-50 text-green-800",
   },
   reprovada: {
     titulo: "Solicitações Reprovadas",
-    descricao: "Solicitações de cadastro e edição reprovadas.",
+    descricao: "Solicitações de cadastro, edição e exclusão reprovadas.",
     label: "Reprovada",
     classe: "border-red-200 bg-red-50 text-red-800",
   },
 };
+
+const nomesTipos = {
+  CADASTRO: "Cadastro",
+  EDICAO: "Edição",
+  EXCLUSAO: "Exclusão",
+};
+
+function nomeTipoSolicitacao(tipo) {
+  return nomesTipos[String(tipo || "").toUpperCase()] || "Não informado";
+}
 
 export function AdminSolicitacoesLayout() {
   return <Outlet />;
@@ -48,9 +58,7 @@ function mascararCnpj(cnpj) {
 function StatusBadge({ status }) {
   const configuracao = configuracaoStatus[status];
 
-  if (!configuracao) {
-    return null;
-  }
+  if (!configuracao) return null;
 
   return (
     <span
@@ -61,15 +69,25 @@ function StatusBadge({ status }) {
   );
 }
 
+function TipoBadge({ tipo }) {
+  return (
+    <span className="inline-flex rounded-full border border-base-300 bg-base-200 px-2.5 py-1 text-xs font-bold text-base-content">
+      {nomeTipoSolicitacao(tipo)}
+    </span>
+  );
+}
+
 function CampoDetalhe({ titulo, valor }) {
+  const informado =
+    valor !== null && valor !== undefined && String(valor).trim() !== "";
+
   return (
     <div className="min-w-0">
       <dt className="text-xs font-bold uppercase tracking-wide text-base-content/50">
         {titulo}
       </dt>
-
       <dd className="mt-1 break-words text-sm text-base-content">
-        {valor || "Não informado"}
+        {informado ? valor : "Não informado"}
       </dd>
     </div>
   );
@@ -81,7 +99,6 @@ function SecaoDetalhes({ titulo, children }) {
       <h3 className="mb-4 text-sm font-bold uppercase tracking-wide text-primary">
         {titulo}
       </h3>
-
       {children}
     </section>
   );
@@ -117,8 +134,8 @@ function SecaoComparacao({ comparacao, carregando, erro, historica }) {
 
   if (!comparacao) return null;
 
-  const atual = comparacao.dadosAtuais;
-  const proposto = comparacao.dadosPropostos;
+  const atual = comparacao.dadosAtuais || {};
+  const proposto = comparacao.dadosPropostos || {};
 
   const campos = [
     ["Nome", "nome"],
@@ -150,7 +167,30 @@ function SecaoComparacao({ comparacao, carregando, erro, historica }) {
       .sort()
       .join("|");
 
-  const categoriasPropostas = (proposto.categorias || []).map(String).sort();
+  // Compara nomes normalizados, sem depender da ordem das categorias.
+  const normalizarNomeCategoria = (nome) =>
+    String(nome || "")
+      .trim()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/\s+/g, " ");
+
+  const categoriasAtuais = atual.categorias || [];
+  const categoriasPropostas = proposto.categorias || [];
+
+  const normalizarConjuntoCategorias = (categorias) =>
+    [...new Set(categorias.map(normalizarNomeCategoria))]
+      .filter(Boolean)
+      .sort()
+      .join("|");
+
+  const categoriasAlteradas =
+    normalizarConjuntoCategorias(categoriasAtuais) !==
+    normalizarConjuntoCategorias(categoriasPropostas);
+
+  const imagensAlteradas =
+    compararImagens(imagensAtuais) !== compararImagens(imagensPropostas);
 
   return (
     <SecaoDetalhes titulo="Comparação da edição solicitada">
@@ -185,37 +225,40 @@ function SecaoComparacao({ comparacao, carregando, erro, historica }) {
           );
         })}
 
-        <div className="rounded-xl border border-base-300 p-3">
+        {/* Comparação de categorias por nome. */}
+        <div
+          className={`rounded-xl border p-3 ${
+            categoriasAlteradas
+              ? "border-amber-300 bg-amber-50/60"
+              : "border-base-300"
+          }`}
+        >
           <p className="mb-2 text-xs font-bold uppercase text-base-content/70">
             Categorias
+            {categoriasAlteradas ? " • Alterado" : ""}
           </p>
 
           <div className="grid gap-3 sm:grid-cols-2">
+            <CampoDetalhe titulo="Atuais" valor={categoriasAtuais.join(", ")} />
+
             <CampoDetalhe
-              titulo="Atuais"
-              valor={atual.categorias?.join(", ")}
-            />
-            <CampoDetalhe
-              titulo="Propostas (IDs)"
+              titulo="Propostas"
               valor={categoriasPropostas.join(", ")}
             />
           </div>
-
-          <p className="mt-2 text-xs text-base-content/60">
-            A comparação automática das categorias depende da correspondência
-            entre os IDs e os nomes cadastrados.
-          </p>
         </div>
 
+        {/* Comparação de imagens. */}
         <div
           className={`rounded-xl border p-3 ${
-            compararImagens(imagensAtuais) !== compararImagens(imagensPropostas)
+            imagensAlteradas
               ? "border-amber-300 bg-amber-50/60"
               : "border-base-300"
           }`}
         >
           <p className="mb-2 text-xs font-bold uppercase text-base-content/70">
             Imagens
+            {imagensAlteradas ? " • Alterado" : ""}
           </p>
 
           <div className="grid gap-3 sm:grid-cols-2">
@@ -262,6 +305,50 @@ function SecaoComparacao({ comparacao, carregando, erro, historica }) {
   );
 }
 
+// Exibe os dados informados pelo usuário ao solicitar exclusão.
+function SecaoExclusao({ ong }) {
+  return (
+    <SecaoDetalhes titulo="Solicitação de exclusão">
+      <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50/60 p-4">
+        <div className="flex items-start gap-3">
+          <i
+            className="fa-solid fa-triangle-exclamation mt-1 text-amber-700"
+            aria-hidden="true"
+          />
+
+          <div>
+            <h4 className="font-bold text-base-content">
+              Exclusão lógica da organização
+            </h4>
+
+            <p className="mt-2 text-sm leading-6 text-base-content/70">
+              A aprovação desta solicitação desativa a organização na
+              plataforma, preservando os registros históricos. A rejeição mantém
+              a organização ativa.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <dl className="grid gap-4">
+        <CampoDetalhe titulo="Motivo da exclusão" valor={ong.motivoExclusao} />
+
+        <CampoDetalhe
+          titulo="Detalhes da exclusão"
+          valor={ong.detalhesExclusao}
+        />
+      </dl>
+
+      {!ong.motivoExclusao && !ong.detalhesExclusao && (
+        <p className="mt-4 text-sm text-warning">
+          Os dados da justificativa de exclusão não foram disponibilizados na
+          resposta da API. Confira essas informações antes de aprovar.
+        </p>
+      )}
+    </SecaoDetalhes>
+  );
+}
+
 function ModalDetalhes({ ong, onClose, onUpdateStatus, onCarregarComparacao }) {
   const [modo, setModo] = useState("detalhes");
   const [justificativa, setJustificativa] = useState("");
@@ -274,6 +361,7 @@ function ModalDetalhes({ ong, onClose, onUpdateStatus, onCarregarComparacao }) {
   const [erroComparacao, setErroComparacao] = useState("");
 
   const ehEdicao = ong.tipoSolicitacao === "EDICAO";
+  const ehExclusao = ong.tipoSolicitacao === "EXCLUSAO";
 
   useEffect(() => {
     if (!ehEdicao || ong.status !== "pendente") return;
@@ -311,20 +399,26 @@ function ModalDetalhes({ ong, onClose, onUpdateStatus, onCarregarComparacao }) {
   }, [ehEdicao, ong.id, ong.status, onCarregarComparacao]);
 
   // Somente solicitações pendentes podem ser analisadas.
+  // Edições exigem a comparação carregada.
+  // Exclusões exigem os dois campos da justificativa.
+  const exclusaoComJustificativa =
+    Boolean(String(ong.motivoExclusao || "").trim()) &&
+    Boolean(String(ong.detalhesExclusao || "").trim());
+
   const podeAnalisar =
-    ong.status === "pendente" && (!ehEdicao || Boolean(comparacao));
+    ong.status === "pendente" &&
+    (!ehEdicao || Boolean(comparacao)) &&
+    (!ehExclusao || exclusaoComJustificativa);
 
   const executarAnalise = useCallback(
     async (status, motivo = "") => {
-      if (salvando || !podeAnalisar) {
-        return;
-      }
+      if (salvando || !podeAnalisar) return;
 
       setSalvando(true);
       setErroAnalise("");
 
       try {
-        // Aguarda o backend confirmar a análise antes de fechar o modal.
+        // Aguarda o backend confirmar a análise.
         await onUpdateStatus(ong.id, status, motivo);
         onClose();
       } catch (erro) {
@@ -353,9 +447,7 @@ function ModalDetalhes({ ong, onClose, onUpdateStatus, onCarregarComparacao }) {
   async function reprovarSolicitacao(event) {
     event.preventDefault();
 
-    if (!podeAnalisar) {
-      return;
-    }
+    if (!podeAnalisar) return;
 
     const texto = justificativa.trim();
 
@@ -407,10 +499,7 @@ function ModalDetalhes({ ong, onClose, onUpdateStatus, onCarregarComparacao }) {
 
               <div className="mt-1 flex flex-wrap gap-2">
                 <StatusBadge status={ong.status} />
-
-                <span className="inline-flex rounded-full border border-base-300 bg-base-200 px-2.5 py-1 text-xs font-bold text-base-content">
-                  {ehEdicao ? "Edição" : "Cadastro"}
-                </span>
+                <TipoBadge tipo={ong.tipoSolicitacao} />
               </div>
             </div>
           </div>
@@ -438,6 +527,8 @@ function ModalDetalhes({ ong, onClose, onUpdateStatus, onCarregarComparacao }) {
                   historica={ong.status !== "pendente"}
                 />
               )}
+
+              {ehExclusao && <SecaoExclusao ong={ong} />}
 
               <SecaoDetalhes titulo="Dados institucionais">
                 <dl className="grid gap-4 sm:grid-cols-2">
@@ -467,7 +558,6 @@ function ModalDetalhes({ ong, onClose, onUpdateStatus, onCarregarComparacao }) {
               <SecaoDetalhes titulo="Contatos e redes sociais">
                 <dl className="grid gap-4 sm:grid-cols-2">
                   <CampoDetalhe titulo="Telefone" valor={ong.telefone} />
-
                   <CampoDetalhe titulo="Instagram" valor={ong.instagram} />
                 </dl>
               </SecaoDetalhes>
@@ -478,19 +568,12 @@ function ModalDetalhes({ ong, onClose, onUpdateStatus, onCarregarComparacao }) {
                     titulo="Localização cadastrada"
                     valor={ong.localizacao}
                   />
-
                   <CampoDetalhe titulo="CEP" valor={ong.cep} />
-
                   <CampoDetalhe titulo="Logradouro" valor={ong.logradouro} />
-
                   <CampoDetalhe titulo="Número" valor={ong.numero} />
-
                   <CampoDetalhe titulo="Complemento" valor={ong.complemento} />
-
                   <CampoDetalhe titulo="Bairro" valor={ong.bairro} />
-
                   <CampoDetalhe titulo="Cidade" valor={ong.cidade} />
-
                   <CampoDetalhe titulo="Estado" valor={ong.estado} />
                 </dl>
               </SecaoDetalhes>
@@ -622,7 +705,6 @@ function ModalDetalhes({ ong, onClose, onUpdateStatus, onCarregarComparacao }) {
                 className="fa-solid fa-circle-exclamation"
                 aria-hidden="true"
               />
-
               <span>{erroAnalise}</span>
             </div>
           )}
@@ -678,6 +760,10 @@ function ModalDetalhes({ ong, onClose, onUpdateStatus, onCarregarComparacao }) {
       </section>
     </div>
   );
+}
+
+function contatoDaOng(ong) {
+  return ong.telefone || ong.instagram || "Não informado";
 }
 
 export function AdminSolicitacoesPage({ status }) {
@@ -989,11 +1075,7 @@ export function AdminSolicitacoesPage({ status }) {
                         </td>
 
                         <td>
-                          <span className="inline-flex rounded-full border border-base-300 bg-base-200 px-2.5 py-1 text-xs font-bold text-base-content">
-                            {ong.tipoSolicitacao === "EDICAO"
-                              ? "Edição"
-                              : "Cadastro"}
-                          </span>
+                          <TipoBadge tipo={ong.tipoSolicitacao} />
                         </td>
 
                         <td>
@@ -1079,8 +1161,4 @@ export function AdminSolicitacoesPage({ status }) {
       )}
     </>
   );
-}
-
-function contatoDaOng(ong) {
-  return ong.telefone || ong.instagram || "Não informado";
 }

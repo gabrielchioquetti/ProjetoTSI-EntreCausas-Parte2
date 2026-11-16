@@ -11,6 +11,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
@@ -46,9 +47,13 @@ public class Ong {
     @Column(name = "instagram", length = 255)
     private String instagram;
 
-    // Cada usuário pode gerenciar somente uma ONG.
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_usuario", nullable = false, unique = true)
+    // Indica se a ONG está ativa no sistema.
+    @Column(name = "ativa", nullable = false)
+    private boolean ativa = false;
+
+    // Cada usuário pode possuir várias ONGs ao longo do tempo.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_usuario", nullable = false)
     private Usuario usuario;
 
     // Relacionamento 1:1 com Endereço.
@@ -229,6 +234,14 @@ public class Ong {
 
     public void setInstagram(String instagram) {
         this.instagram = instagram;
+    }
+
+    public boolean isAtiva() {
+        return ativa;
+    }
+
+    public void setAtiva(boolean ativa) {
+        this.ativa = ativa;
     }
 
     public Usuario getUsuario() {

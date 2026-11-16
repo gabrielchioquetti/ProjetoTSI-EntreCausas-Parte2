@@ -24,16 +24,16 @@ public class WebConfig implements WebMvcConfigurer {
         }
 
         registry.addMapping("/**")
-                .allowedOrigins(origens)
-                .allowedMethods(
-                    "GET",
-                    "POST",
-                    "PUT",
-                    "PATCH",
-                    "DELETE",
-                    "OPTIONS"
-                )
-                .allowedHeaders("*")
-                .allowCredentials(true);
+            .allowedOrigins(origens)
+            .allowedMethods(
+                "GET",
+                "POST",
+                "PUT",
+                "PATCH",
+                "DELETE",
+                "OPTIONS"
+            )
+            .allowedHeaders("*")
+            .allowCredentials(true);
     }
 }

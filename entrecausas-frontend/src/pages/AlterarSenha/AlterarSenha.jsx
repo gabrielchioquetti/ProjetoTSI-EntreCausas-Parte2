@@ -3,6 +3,8 @@ import { useNavigate } from "react-router";
 import CampoFormulario from "../../components/Form/CampoFormulario";
 import OngsCarrossel from "../../components/Ongs/OngsCarrossel";
 import Footer from "../../components/Footer/Footer";
+import { apiFetch } from "../../services/Api.js";
+import { useAuth } from "../../contexts/AuthContext.jsx";
 
 const imagens = [
   "../../img/carrossel/instituto-nosso-lar/fotografia-Instituto-Nosso-Lar-Horizontal-Desktop.jpg",
@@ -12,11 +14,16 @@ const imagens = [
 
 function AlterarSenha() {
   const navigate = useNavigate();
+  const { usuario, carregando } = useAuth();
+
   const [imagemAtual, setImagemAtual] = useState(0);
+  const [senhaAtual, setSenhaAtual] = useState("");
   const [novaSenha, setNovaSenha] = useState("");
   const [confirmacaoSenha, setConfirmacaoSenha] = useState("");
   const [erroConfirmacao, setErroConfirmacao] = useState("");
+  const [erro, setErro] = useState("");
   const [mensagem, setMensagem] = useState("");
+  const [salvando, setSalvando] = useState(false);
 
   useEffect(() => {
     const intervalo = setInterval(() => {
@@ -28,22 +35,72 @@ function AlterarSenha() {
     return () => clearInterval(intervalo);
   }, []);
 
-  function enviarFormulario(event) {
+  // Envia a alteração de senha para o backend.
+  async function enviarFormulario(event) {
     event.preventDefault();
+
+    if (salvando || carregando) {
+      return;
+    }
+
     setErroConfirmacao("");
+    setErro("");
     setMensagem("");
+
+    if (!usuario?.idUsuario) {
+      setErro("Você precisa entrar na sua conta para alterar a senha.");
+      return;
+    }
+
+    if (!senhaAtual.trim()) {
+      setErro("Informe sua senha atual.");
+      return;
+    }
+
+    if (novaSenha.length < 8 || novaSenha.length > 50) {
+      setErro("A nova senha deve conter entre 8 e 50 caracteres.");
+      return;
+    }
 
     if (novaSenha !== confirmacaoSenha) {
       setErroConfirmacao("A confirmação deve ser igual à nova senha.");
       return;
     }
 
-    setMensagem(
-      "As senhas foram conferidas nesta tela. A alteração ainda não está conectada ao backend.",
-    );
-    event.currentTarget.reset();
-    setNovaSenha("");
-    setConfirmacaoSenha("");
+    if (senhaAtual === novaSenha) {
+      setErro("A nova senha deve ser diferente da senha atual.");
+      return;
+    }
+
+    try {
+      setSalvando(true);
+
+      await apiFetch(`/api/usuarios/${usuario.idUsuario}/senha`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          senhaAtual,
+          novaSenha,
+          confirmarSenha: confirmacaoSenha,
+        }),
+      });
+
+      // Limpa os campos somente após a alteração bem-sucedida.
+      setSenhaAtual("");
+      setNovaSenha("");
+      setConfirmacaoSenha("");
+      setErroConfirmacao("");
+
+      setMensagem("Sua senha foi alterada com sucesso.");
+    } catch (error) {
+      setErro(
+        error.message || "Não foi possível alterar sua senha. Tente novamente.",
+      );
+    } finally {
+      setSalvando(false);
+    }
   }
 
   return (
@@ -70,10 +127,7 @@ function AlterarSenha() {
           ))}
         </div>
 
-        <div
-          className="absolute inset-0 bg-black/65"
-          aria-hidden="true"
-        />
+        <div className="absolute inset-0 bg-black/65" aria-hidden="true" />
 
         <div className="hero relative z-10 min-h-screen px-6">
           <div className="hero-content w-full max-w-6xl flex-col gap-12 lg:flex-row-reverse">
@@ -115,14 +169,6 @@ function AlterarSenha() {
                   </p>
                 </div>
 
-                <div
-                  role="note"
-                  className="alert mb-2 border border-secondary bg-secondary/50 text-sm"
-                >
-                  Protótipo visual: a senha atual não será validada e a nova
-                  senha não será salva.
-                </div>
-
                 <form onSubmit={enviarFormulario} className="space-y-5">
                   <CampoFormulario
                     label="Senha atual"
@@ -130,6 +176,12 @@ function AlterarSenha() {
                     type="password"
                     placeholder="Digite sua senha atual"
                     autoComplete="current-password"
+                    value={senhaAtual}
+                    onChange={(event) => {
+                      setSenhaAtual(event.target.value);
+                      setErro("");
+                      setMensagem("");
+                    }}
                     required
                   />
 
@@ -140,11 +192,13 @@ function AlterarSenha() {
                     placeholder="Digite sua nova senha"
                     autoComplete="new-password"
                     minLength={8}
-                    title="A nova senha deve ter pelo menos 8 caracteres."
+                    maxLength={50}
+                    title="A nova senha deve conter entre 8 e 50 caracteres."
                     value={novaSenha}
                     onChange={(event) => {
                       setNovaSenha(event.target.value);
                       setErroConfirmacao("");
+                      setErro("");
                       setMensagem("");
                     }}
                     required
@@ -157,15 +211,26 @@ function AlterarSenha() {
                     placeholder="Digite a nova senha novamente"
                     autoComplete="new-password"
                     minLength={8}
+                    maxLength={50}
                     erro={erroConfirmacao}
                     value={confirmacaoSenha}
                     onChange={(event) => {
                       setConfirmacaoSenha(event.target.value);
                       setErroConfirmacao("");
+                      setErro("");
                       setMensagem("");
                     }}
                     required
                   />
+
+                  {erro && (
+                    <p
+                      role="alert"
+                      className="rounded-xl border border-error/30 bg-error/10 p-3 text-sm text-error"
+                    >
+                      {erro}
+                    </p>
+                  )}
 
                   {mensagem && (
                     <p
@@ -178,9 +243,10 @@ function AlterarSenha() {
 
                   <button
                     type="submit"
+                    disabled={salvando || carregando || !usuario}
                     className="btn btn-primary mt-2 h-12 w-full rounded-xl text-base font-bold"
                   >
-                    Atualizar senha
+                    {salvando ? "Atualizando..." : "Atualizar senha"}
                     <i
                       className="fa-solid fa-arrow-right ml-2"
                       aria-hidden="true"

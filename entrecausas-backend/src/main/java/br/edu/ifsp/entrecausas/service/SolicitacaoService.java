@@ -114,36 +114,63 @@ public class SolicitacaoService {
         this.ongService = ongService;
     }
 
-    // Registra uma nova solicitação.
+    /*  
+        Registra uma nova solicitação.
+        O cadastro, a edição e a exclusão de ONGs devem utilizar os fluxos específicos do OngService.
+        Impede a criação direta de solicitações sem validação.
+    */
     @Transactional
     public SolicitacaoResponseDTO criar(
             SolicitacaoCriacaoDTO dto) {
 
-        // Verifica se a ONG existe.
-        Ong ong = buscarOng(dto.idOng());
-
-        // Verifica se o usuário existe.
-        Usuario usuario = buscarUsuario(dto.idUsuario());
-
-        // Busca o status inicial PENDENTE.
-        StatusSolicitacao statusPendente =
-            buscarStatusPorNome("PENDENTE");
-
-        // Cria a solicitação com status pendente.
-        Solicitacao solicitacao = new Solicitacao(
-            ong,
-            usuario,
-            statusPendente
+        throw new ResponseStatusException(
+            HttpStatus.FORBIDDEN,
+            "A criação direta de solicitações não é permitida. "
+            + "Utilize os serviços de cadastro, edição "
+            + "ou encerramento de ONG."
         );
-
-        solicitacao.setTipoSolicitacao("CADASTRO");
-
-        Solicitacao salva =
-            solicitacaoRepository.save(solicitacao);
-
-        return converterParaDTO(salva);
     }
 
+    
+    // Impede ativar uma ONG quando outra organização
+    // do responsável ainda não teve encerramento aprovado.
+    private void validarAusenciaDeOutraOng(
+            Long idResponsavel,
+            Long idOngAtual) {
+
+        List<Ong> outrasOngs = ongRepository
+            .findByUsuarioIdUsuarioOrderByIdOngDesc(
+                idResponsavel
+            );
+
+        for (Ong outraOng : outrasOngs) {
+
+            if (outraOng.getIdOng().equals(idOngAtual)) {
+                continue;
+            }
+
+            boolean encerramentoAprovado =
+                solicitacaoRepository
+                    .findByOngIdOng(outraOng.getIdOng())
+                    .stream()
+                    .anyMatch(item ->
+                        "EXCLUSAO".equalsIgnoreCase(
+                            item.getTipoSolicitacao()
+                        )
+                        && "APROVADO".equalsIgnoreCase(
+                            item.getStatus().getNome()
+                        )
+                    );
+
+            if (outraOng.isAtiva() || !encerramentoAprovado) {
+                throw new ConflitoException(
+                    "O usuário possui outra ONG "
+                    + "sem encerramento aprovado."
+                );
+            }
+        }
+    }
+    
     // Processa a análise da solicitação.
     // O administrador é identificado pela sessão autenticada.
     @Transactional
@@ -152,27 +179,38 @@ public class SolicitacaoService {
             SolicitacaoAnaliseDTO dto,
             String emailAdministrador) {
 
-        // Busca o usuário pela identidade autenticada.
-        Usuario administrador =
-            usuarioRepository.findByEmail(emailAdministrador)
-                .orElseThrow(() ->
-                    new RecursoNaoEncontradoException(
-                        "Usuário autenticado não encontrado."
-                    )
-                );
+        Usuario administrador = usuarioRepository
+            .findByEmail(emailAdministrador)
+            .orElseThrow(() ->
+                new RecursoNaoEncontradoException(
+                    "Usuário autenticado não encontrado."
+                )
+            );
 
-        // Verifica se o usuário é administrador.
         validarAdministrador(administrador);
 
-        // Busca a solicitação.
-        Solicitacao solicitacao =
-            buscarSolicitacao(idSolicitacao);
+        Solicitacao solicitacao = buscarSolicitacao(idSolicitacao);
 
-        // Bloqueia a ONG antes de analisar a solicitação.
-        // Mantém a ordem de bloqueio utilizada na edição.
+        Long idOng = solicitacao.getOng().getIdOng();
+        Long idResponsavel =
+            solicitacao.getOng().getUsuario().getIdUsuario();
+
+        // Mantém a ordem de bloqueio: usuário, ONG, solicitação.
+        Usuario responsavel = entityManager.find(
+            Usuario.class,
+            idResponsavel,
+            LockModeType.PESSIMISTIC_WRITE
+        );
+
+        if (responsavel == null) {
+            throw new RecursoNaoEncontradoException(
+                "Responsável pela ONG não encontrado."
+            );
+        }
+
         Ong ong = entityManager.find(
             Ong.class,
-            solicitacao.getOng().getIdOng(),
+            idOng,
             LockModeType.PESSIMISTIC_WRITE
         );
 
@@ -182,85 +220,193 @@ public class SolicitacaoService {
             );
         }
 
-        // Atualiza e bloqueia a solicitação durante a análise.
         entityManager.refresh(
             solicitacao,
             LockModeType.PESSIMISTIC_WRITE
         );
 
-        // A solicitação só pode ser analisada uma vez.
         validarSolicitacaoPendente(solicitacao);
 
-        // Busca o novo status.
         StatusSolicitacao novoStatus =
             buscarStatus(dto.idStatus());
 
-        String nomeStatus =
-            novoStatus.getNome().toUpperCase();
+        String nomeStatus = novoStatus.getNome().toUpperCase();
 
-        // A análise só aceita APROVADO ou REJEITADO.
         if (!nomeStatus.equals("APROVADO")
                 && !nomeStatus.equals("REJEITADO")) {
-
             throw new ConflitoException(
-                "A análise deve resultar em "
-                + "APROVADO ou REJEITADO."
+                "A análise deve resultar em APROVADO ou REJEITADO."
             );
         }
 
-        // Valida o motivo conforme o resultado.
         validarMotivoRejeicao(
             nomeStatus,
             dto.motivoRejeicao()
         );
 
-        // Identifica o tipo de solicitação.
         String tipoSolicitacao =
             solicitacao.getTipoSolicitacao();
 
-        // Registros antigos sem tipo são tratados como cadastro.
+        boolean cadastro =
+            tipoSolicitacao == null
+            || "CADASTRO".equalsIgnoreCase(tipoSolicitacao);
+
         boolean edicao =
             "EDICAO".equalsIgnoreCase(tipoSolicitacao);
 
+        boolean exclusao =
+            "EXCLUSAO".equalsIgnoreCase(tipoSolicitacao);
+
+        boolean aprovado = "APROVADO".equals(nomeStatus);
+
+        List<Solicitacao> historico =
+            solicitacaoRepository.findByOngIdOng(idOng);
+
+        boolean cadastroRejeitado = historico.stream()
+            .anyMatch(item ->
+                (item.getTipoSolicitacao() == null
+                    || "CADASTRO".equalsIgnoreCase(
+                        item.getTipoSolicitacao()
+                    ))
+                && "REJEITADO".equalsIgnoreCase(
+                    item.getStatus().getNome()
+                )
+            );
+
+        boolean cadastroAprovado = historico.stream()
+            .anyMatch(item ->
+                (item.getTipoSolicitacao() == null
+                    || "CADASTRO".equalsIgnoreCase(
+                        item.getTipoSolicitacao()
+                    ))
+                && "APROVADO".equalsIgnoreCase(
+                    item.getStatus().getNome()
+                )
+            );
+
+        boolean correcaoAprovada = historico.stream()
+            .anyMatch(item ->
+                "EDICAO".equalsIgnoreCase(
+                    item.getTipoSolicitacao()
+                )
+                && "APROVADO".equalsIgnoreCase(
+                    item.getStatus().getNome()
+                )
+            );
+
+        boolean encerramentoAprovado = historico.stream()
+            .anyMatch(item ->
+                "EXCLUSAO".equalsIgnoreCase(
+                    item.getTipoSolicitacao()
+                )
+                && "APROVADO".equalsIgnoreCase(
+                    item.getStatus().getNome()
+                )
+            );
+
+        // Uma ONG encerrada não pode ser reativada.
+        if (encerramentoAprovado) {
+            throw new ConflitoException(
+                "Esta ONG já teve seu encerramento aprovado."
+            );
+        }
+
+        // Identifica um cadastro rejeitado ainda não regularizado.
+        boolean cadastroRejeitadoNaoRegularizado =
+            cadastroRejeitado
+            && !cadastroAprovado
+            && !correcaoAprovada;
+
         if (edicao) {
 
-            // Processa a proposta de edição.
+            boolean correcaoCadastro =
+                !ong.isAtiva()
+                && cadastroRejeitadoNaoRegularizado;
+
+            if (!ong.isAtiva() && !correcaoCadastro) {
+                throw new ConflitoException(
+                    "Não é possível analisar a edição "
+                    + "de uma ONG inativa."
+                );
+            }
+
+            if (correcaoCadastro && aprovado) {
+                validarAusenciaDeOutraOng(
+                    responsavel.getIdUsuario(),
+                    idOng
+                );
+            }
+
+            // Aplica os dados aprovados ou descarta
+            // os arquivos temporários de uma edição rejeitada.
             analisarEdicao(
                 solicitacao,
                 ong,
                 nomeStatus
             );
 
-        } else if (tipoSolicitacao != null
-                && !tipoSolicitacao.equalsIgnoreCase("CADASTRO")) {
+            if (correcaoCadastro && aprovado) {
+                ong.setAtiva(true);
+            }
 
+        } else if (cadastro) {
+
+            if (aprovado) {
+
+                if (ong.isAtiva()) {
+                    throw new ConflitoException(
+                        "Esta ONG já está ativa."
+                    );
+                }
+
+                validarAusenciaDeOutraOng(
+                    responsavel.getIdUsuario(),
+                    idOng
+                );
+
+                ong.setAtiva(true);
+            }
+
+            // Cadastro rejeitado permanece inativo.
+
+        } else if (exclusao) {
+
+            boolean podeEncerrar =
+                ong.isAtiva()
+                || cadastroRejeitadoNaoRegularizado;
+
+            if (!podeEncerrar) {
+                throw new ConflitoException(
+                    "Somente uma ONG ativa ou um cadastro "
+                    + "rejeitado pode ser encerrado."
+                );
+            }
+
+            if (aprovado) {
+                ong.setAtiva(false);
+            }
+
+            // Rejeição preserva a situação anterior.
+            // Nenhum dado ou arquivo da ONG é removido.
+
+        } else {
             throw new ConflitoException(
                 "Tipo de solicitação não reconhecido."
             );
         }
 
-        // Registra o administrador responsável.
         solicitacao.setAdministrador(administrador);
-
-        // Atualiza o status.
         solicitacao.setStatus(novoStatus);
-
-        // Registra a data da análise.
         solicitacao.setDataAnalise(LocalDateTime.now());
 
-        // O motivo só é armazenado quando houver rejeição.
-        if (nomeStatus.equals("REJEITADO")) {
-
+        if ("REJEITADO".equals(nomeStatus)) {
             solicitacao.setMotivoRejeicao(
                 dto.motivoRejeicao().trim()
             );
-
         } else {
-
             solicitacao.setMotivoRejeicao(null);
         }
 
-        // Persiste as alterações na mesma transação.
         Solicitacao atualizada =
             solicitacaoRepository.saveAndFlush(solicitacao);
 
@@ -968,19 +1114,6 @@ public class SolicitacaoService {
             );
     }
 
-    // Busca um status pelo nome.
-    private StatusSolicitacao buscarStatusPorNome(
-            String nome) {
-
-        return statusSolicitacaoRepository.findByNome(nome)
-            .orElseThrow(() ->
-                new RecursoNaoEncontradoException(
-                    "Status '" + nome
-                    + "' não encontrado no sistema."
-                )
-            );
-    }
-
     // Garante que a solicitação ainda está pendente.
     private void validarSolicitacaoPendente(
             Solicitacao solicitacao) {
@@ -1077,7 +1210,11 @@ public class SolicitacaoService {
             // Identifica o tipo da solicitação.
             solicitacao.getTipoSolicitacao() == null
                 ? "CADASTRO"
-                : solicitacao.getTipoSolicitacao()
+                : solicitacao.getTipoSolicitacao(),
+
+            // Informações da solicitação de exclusão.
+            solicitacao.getMotivoExclusao(),
+            solicitacao.getDetalhesExclusao()
         );
     }
 }

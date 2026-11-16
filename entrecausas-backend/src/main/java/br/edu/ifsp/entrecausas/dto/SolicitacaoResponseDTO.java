@@ -23,7 +23,11 @@ public record SolicitacaoResponseDTO(
     LocalDateTime dataAnalise,
     // Motivo informado quando a solicitação foi rejeitada.
     String motivoRejeicao,
-    // Identifica se a solicitação é CADASTRO ou EDICAO.
-    String tipoSolicitacao
+    // Identifica se a solicitação é CADASTRO, EDICAO ou EXCLUSAO.
+    String tipoSolicitacao,
+    // Motivo informado pelo usuário ao solicitar a exclusão.
+    String motivoExclusao,
+    // Detalhes informados pelo usuário sobre a exclusão.
+    String detalhesExclusao
 
 ) {}

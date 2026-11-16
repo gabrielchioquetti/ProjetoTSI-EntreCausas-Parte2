@@ -1,5 +1,6 @@
 package br.edu.ifsp.entrecausas.repository;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -21,9 +22,17 @@ public interface OngRepository extends JpaRepository<Ong, Long> {
     // Verifica telefone em outra ONG durante atualização.
     boolean existsByTelefoneHashAndIdOngNot(String telefoneHash, Long idOng);
 
-    // Busca a ONG pelo usuário responsável.
-    Optional<Ong> findByUsuarioIdUsuario(Long idUsuario);
+    // Busca a ONG ativa pelo usuário responsável.
+    Optional<Ong> findByUsuarioIdUsuarioAndAtivaTrue(Long idUsuario);
 
-    // Verifica se o usuário já possui uma ONG.
-    boolean existsByUsuarioIdUsuario(Long idUsuario);
+    // Verifica se o usuário possui uma ONG ativa.
+    boolean existsByUsuarioIdUsuarioAndAtivaTrue(Long idUsuario);
+
+    // Lista todas as ONGs do usuário, incluindo as desativadas.
+    List<Ong> findByUsuarioIdUsuarioOrderByIdOngDesc(Long idUsuario);
+
+    // Lista as ONGs desativadas do usuário.
+    List<Ong> findByUsuarioIdUsuarioAndAtivaFalseOrderByIdOngDesc(
+        Long idUsuario
+    );
 }

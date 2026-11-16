@@ -2,13 +2,12 @@ package br.edu.ifsp.entrecausas.controller;
 
 import java.util.List;
 
-import org.springframework.http.HttpStatus;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -18,7 +17,6 @@ import jakarta.validation.Valid;
 
 import br.edu.ifsp.entrecausas.dto.SolicitacaoAnaliseDTO;
 import br.edu.ifsp.entrecausas.dto.SolicitacaoComparacaoDTO;
-import br.edu.ifsp.entrecausas.dto.SolicitacaoCriacaoDTO;
 import br.edu.ifsp.entrecausas.dto.SolicitacaoResponseDTO;
 import br.edu.ifsp.entrecausas.dto.StatusSolicitacaoResponseDTO;
 import br.edu.ifsp.entrecausas.service.SolicitacaoService;
@@ -35,17 +33,6 @@ public class SolicitacaoController {
             SolicitacaoService solicitacaoService) {
 
         this.solicitacaoService = solicitacaoService;
-    }
-
-    // Impede a criação direta de solicitações.
-    // O cadastro e a edição de ONGs criam suas próprias solicitações.
-    @PostMapping
-    public ResponseEntity<SolicitacaoResponseDTO> criar(
-            @Valid @RequestBody SolicitacaoCriacaoDTO dto) {
-
-        return ResponseEntity
-            .status(HttpStatus.FORBIDDEN)
-            .build();
     }
 
     // Lista todas as solicitações.

@@ -70,6 +70,10 @@ function converterSolicitacao(solicitacao) {
     status: normalizarStatus(solicitacao.nomeStatus),
     justificativaReprovacao: solicitacao.motivoRejeicao || "",
     dataAnalise: solicitacao.dataAnalise,
+
+    // Dados de exclusão, quando disponibilizados pela API.
+    motivoExclusao: solicitacao.motivoExclusao || "",
+    detalhesExclusao: solicitacao.detalhesExclusao || "",
   };
 }
 
@@ -142,6 +146,29 @@ async function carregarDetalhesSolicitacoes(dados) {
       };
     }),
   );
+}
+
+// Converte os IDs das categorias propostas em nomes reais.
+function converterCategoriasPropostas(ids, categoriasDisponiveis) {
+  const categoriasPorId = new Map(
+    categoriasDisponiveis.map((categoria) => [
+      String(categoria.idCategoria),
+      categoria.nome,
+    ]),
+  );
+
+  return (ids || []).map((id) => {
+    const nome = categoriasPorId.get(String(id));
+
+    // Não inventa nomes quando não existe correspondência.
+    if (!nome) {
+      throw new Error(
+        `A categoria de ID ${id} não foi encontrada no cadastro.`,
+      );
+    }
+
+    return normalizarCategoria(nome);
+  });
 }
 
 export function AdminSolicitacoesProvider({ children }) {
@@ -230,7 +257,22 @@ export function AdminSolicitacoesProvider({ children }) {
         throw new Error("Apenas administradores podem comparar solicitações.");
       }
 
-      const comparacao = await apiFetch(`/api/solicitacoes/${id}/comparacao`);
+      // Consulta a comparação e o cadastro real das categorias.
+      const [comparacao, categoriasDisponiveis] = await Promise.all([
+        apiFetch(`/api/solicitacoes/${id}/comparacao`),
+        apiFetch("/api/categorias"),
+      ]);
+
+      if (!Array.isArray(categoriasDisponiveis)) {
+        throw new Error(
+          "Não foi possível obter a lista de categorias cadastradas.",
+        );
+      }
+
+      const categoriasPropostas = converterCategoriasPropostas(
+        comparacao.dadosPropostos?.categorias,
+        categoriasDisponiveis,
+      );
 
       return {
         idSolicitacao: comparacao.idSolicitacao,
@@ -238,7 +280,10 @@ export function AdminSolicitacoesProvider({ children }) {
         dadosAtuais: converterDetalhesOng(comparacao.dadosAtuais),
         dadosPropostos: {
           ...comparacao.dadosPropostos,
-          categorias: comparacao.dadosPropostos?.categorias || [],
+
+          // Agora ambos os lados utilizam nomes de categorias.
+          categorias: categoriasPropostas,
+
           imagens: (comparacao.dadosPropostos?.imagens || []).map(
             (caminho, indice) => ({
               id: `${indice}-${caminho}`,
