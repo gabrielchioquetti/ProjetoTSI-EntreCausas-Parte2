@@ -61,8 +61,7 @@ import br.edu.ifsp.entrecausas.security.HmacCryptoUtil;
 @Service
 public class SolicitacaoService {
 
-    private static final Logger log =
-        LoggerFactory.getLogger(SolicitacaoService.class);
+    private static final Logger log = LoggerFactory.getLogger(SolicitacaoService.class);
 
     private final SolicitacaoRepository solicitacaoRepository;
     private final OngRepository ongRepository;
@@ -79,6 +78,7 @@ public class SolicitacaoService {
     private final ObjectMapper objectMapper;
     private final EntityManager entityManager;
     private final OngService ongService;
+    private final EmailService emailService;
 
     // Injeção de dependência via construtor.
     public SolicitacaoService(
@@ -94,7 +94,9 @@ public class SolicitacaoService {
             FileStorageService fileStorageService,
             ObjectMapper objectMapper,
             EntityManager entityManager,
-            OngService ongService) {
+            OngService ongService,
+            EmailService emailService
+        ) {
 
         this.solicitacaoRepository = solicitacaoRepository;
         this.ongRepository = ongRepository;
@@ -112,6 +114,7 @@ public class SolicitacaoService {
         this.objectMapper = objectMapper;
         this.entityManager = entityManager;
         this.ongService = ongService;
+        this.emailService = emailService;
     }
 
     /*  
@@ -407,10 +410,59 @@ public class SolicitacaoService {
             solicitacao.setMotivoRejeicao(null);
         }
 
-        Solicitacao atualizada =
-            solicitacaoRepository.saveAndFlush(solicitacao);
+        Solicitacao atualizada = solicitacaoRepository.saveAndFlush(solicitacao);
+        SolicitacaoResponseDTO resposta = converterParaDTO(atualizada);
 
-        return converterParaDTO(atualizada);
+        // Guarda os dados necessários antes do encerramento da transação.
+        String emailResponsavel = responsavel.getEmail();
+        String nomeResponsavel = responsavel.getNome();
+        String nomeOng = ong.getNome();
+        String tipoNotificacao = tipoSolicitacao;
+        String statusNotificacao = nomeStatus;
+        String motivoNotificacao = atualizada.getMotivoRejeicao();
+
+        // Envia a notificação somente após a confirmação da transação.
+        TransactionSynchronizationManager.registerSynchronization(
+            new TransactionSynchronization() {
+
+                @Override
+                public void afterCommit() {
+
+                    try {
+
+                        if ("APROVADO".equals(statusNotificacao)) {
+
+                            emailService.enviarAprovacao(
+                                nomeResponsavel,
+                                emailResponsavel,
+                                nomeOng,
+                                tipoNotificacao
+                            );
+
+                        } else {
+
+                            emailService.enviarRejeicao(
+                                nomeResponsavel,
+                                emailResponsavel,
+                                nomeOng,
+                                tipoNotificacao,
+                                motivoNotificacao
+                            );
+                        }
+
+                    } catch (RuntimeException erro) {
+
+                        log.error(
+                            "Falha ao notificar o responsável pela solicitação {}.",
+                            idSolicitacao,
+                            erro
+                        );
+                    }
+                }
+            }
+        );
+
+        return resposta;
     }
 
     // Consulta os dados atuais e propostos de uma edição.

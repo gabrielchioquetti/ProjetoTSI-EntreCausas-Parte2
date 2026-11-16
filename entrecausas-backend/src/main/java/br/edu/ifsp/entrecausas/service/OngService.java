@@ -78,6 +78,7 @@ public class OngService {
     private final ImagemEdicaoPendenteRepository imagemEdicaoPendenteRepository;
 
     private final OngPublicacaoService ongPublicacaoService;
+    private final EmailService emailService;
 
     private final AesCryptoUtil aesCryptoUtil;
     private final HmacCryptoUtil hmacCryptoUtil;
@@ -99,6 +100,7 @@ public class OngService {
         OngEdicaoPendenteRepository ongEdicaoPendenteRepository,
         ImagemEdicaoPendenteRepository imagemEdicaoPendenteRepository,
         OngPublicacaoService ongPublicacaoService,
+        EmailService emailService,
         ObjectMapper objectMapper,
         EntityManager entityManager,
         PasswordEncoder passwordEncoder) {
@@ -114,6 +116,7 @@ public class OngService {
         this.ongEdicaoPendenteRepository = ongEdicaoPendenteRepository;
         this.imagemEdicaoPendenteRepository = imagemEdicaoPendenteRepository;
         this.ongPublicacaoService = ongPublicacaoService;
+        this.emailService = emailService;
         this.objectMapper = objectMapper;
         this.entityManager = entityManager;
         this.passwordEncoder = passwordEncoder;
@@ -356,6 +359,13 @@ public class OngService {
 
         // Persiste a solicitação na mesma transação.
         solicitacaoRepository.save(solicitacao);
+
+        // Registra as notificações após o commit.
+        registrarNotificacaoNovaSolicitacao(
+            usuario,
+            ongSalva.getNome(),
+            "CADASTRO"
+        );
 
         return converterParaDTO(ongSalva);
     }
@@ -752,6 +762,13 @@ public class OngService {
             );
         }
 
+        // Registra as notificações após o commit.
+        registrarNotificacaoNovaSolicitacao(
+            usuario,
+            nome.trim(),
+            "EDICAO"
+        );
+
         return solicitacaoSalva.getIdSolicitacao();
     }
 
@@ -1089,8 +1106,14 @@ public class OngService {
         solicitacao.setMotivoExclusao(motivoExclusao.trim());
         solicitacao.setDetalhesExclusao(detalhesExclusao.trim());
 
-        Solicitacao salva =
-            solicitacaoRepository.saveAndFlush(solicitacao);
+        Solicitacao salva = solicitacaoRepository.saveAndFlush(solicitacao);
+
+        // Registra as notificações após o commit.
+        registrarNotificacaoNovaSolicitacao(
+            usuario,
+            ong.getNome(),
+            "EXCLUSAO"
+        );
 
         // A ONG permanece na situação atual até a análise.
         return salva.getIdSolicitacao();
@@ -1410,4 +1433,63 @@ public class OngService {
     private String normalizarTelefone(String telefone) {
         return telefone.replaceAll("\\D", "");
     }
+
+    // Notifica o responsável e os administradores após o commit.
+    private void registrarNotificacaoNovaSolicitacao(
+            Usuario responsavel,
+            String nomeOng,
+            String tipoSolicitacao) {
+
+        String emailResponsavel = responsavel.getEmail();
+        String nomeResponsavel = responsavel.getNome();
+
+        // Recupera os destinatários enquanto a transação está ativa.
+        List<String> emailsAdministradores = usuarioRepository
+            .findByFuncaoNomeIgnoreCase("ADMINISTRADOR")
+            .stream()
+            .map(usuario -> usuario.getEmail())
+            .filter(email -> email != null && !email.isBlank())
+            .distinct()
+            .toList();
+
+        TransactionSynchronizationManager.registerSynchronization(
+            new TransactionSynchronization() {
+
+                @Override
+                public void afterCommit() {
+
+                    try {
+                        emailService.enviarConfirmacaoSolicitacao(
+                            nomeResponsavel,
+                            emailResponsavel,
+                            nomeOng,
+                            tipoSolicitacao
+                        );
+                    } catch (RuntimeException erro) {
+                        log.error(
+                            "Falha ao notificar o responsável pela ONG.",
+                            erro
+                        );
+                    }
+
+                    for (String emailAdministrador : emailsAdministradores) {
+
+                        try {
+                            emailService.enviarNovaSolicitacaoAdministrador(
+                                emailAdministrador,
+                                nomeOng,
+                                tipoSolicitacao
+                            );
+                        } catch (RuntimeException erro) {
+                            log.error(
+                                "Falha ao notificar um administrador.",
+                                erro
+                            );
+                        }
+                    }
+                }
+            }
+        );
+    }
+
 }

@@ -26,6 +26,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -41,6 +44,7 @@ public class UsuarioService {
     private final AesCryptoUtil aesCryptoUtil;
     private final HmacCryptoUtil hmacCryptoUtil;
     private final FileStorageService fileStorageService;
+    private final EmailService emailService;
 
     // Injeta as dependências do serviço.
     public UsuarioService(
@@ -49,7 +53,9 @@ public class UsuarioService {
             PasswordEncoder passwordEncoder,
             AesCryptoUtil aesCryptoUtil,
             HmacCryptoUtil hmacCryptoUtil,
-            FileStorageService fileStorageService) {
+            FileStorageService fileStorageService,
+            EmailService emailService
+        ) {
 
         this.usuarioRepository = usuarioRepository;
         this.funcaoRepository = funcaoRepository;
@@ -57,6 +63,7 @@ public class UsuarioService {
         this.aesCryptoUtil = aesCryptoUtil;
         this.hmacCryptoUtil = hmacCryptoUtil;
         this.fileStorageService = fileStorageService;
+        this.emailService = emailService;
     }
 
     // Cadastra um novo usuário.
@@ -148,14 +155,48 @@ public class UsuarioService {
             );
         }
 
+        
         try {
 
             Usuario usuarioSalvo =
                 usuarioRepository.save(usuario);
 
+            // Prepara os dados para o e-mail de boas-vindas.
+            String nomeUsuario = usuarioSalvo.getNome();
+            String emailUsuario = usuarioSalvo.getEmail();
+
+            // Envia o e-mail somente após confirmar a transação.
+            TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+
+                    @Override
+                    public void afterCommit() {
+
+                        try {
+                            emailService.enviarBoasVindas(
+                                nomeUsuario,
+                                emailUsuario
+                            );
+
+                        } catch (RuntimeException erro) {
+
+                            // Uma falha no e-mail não desfaz o cadastro.
+                            org.slf4j.LoggerFactory
+                                .getLogger(UsuarioService.class)
+                                .error(
+                                    "Falha ao enviar boas-vindas para o usuário {}.",
+                                    usuarioSalvo.getIdUsuario(),
+                                    erro
+                                );
+                        }
+                    }
+                }
+            );
+
             return converterParaDTO(usuarioSalvo);
 
         } catch (RuntimeException e) {
+
 
             // Remove o arquivo se o banco falhar.
             if (caminhoFoto != null) {
