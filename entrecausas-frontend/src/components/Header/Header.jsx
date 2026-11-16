@@ -19,6 +19,10 @@ const adminLinks = [
   },
 ];
 
+const masterLinks = [
+  { key: "listUsers", nome: "Listagem de Usuários", icon: "fa-users" },
+];
+
 const ongLinks = [
   {
     key: "editOrganization",
@@ -128,23 +132,32 @@ function Header({
     { nome: "Descobrir ONGs", to: "/feed" },
     { nome: "Impacto", to: "/impacto" },
     { nome: "Fale Conosco", to: "/fale-conosco" },
+    { nome: "Logar", to: "/login" },
   ];
 
-  // Identifica os perfis reconhecidos pelo projeto.
-  const perfilReconhecido = userType === "ADM" || userType === "USUARIO";
+  const perfilReconhecido =
+    userType === "ADM" ||
+    userType === "ADMINISTRADOR" ||
+    userType === "MASTER" ||
+    userType === "ONG";
 
-  // Exibe o menu correspondente ao perfil autenticado.
   const hasAuthenticatedMenu = isAuthenticated === true && perfilReconhecido;
 
-  // Evita exibir o menu público durante uma sessão autenticada.
   const sessaoSemPerfilReconhecido =
     isAuthenticated === true && !perfilReconhecido;
 
-  // Seleciona as opções conforme o perfil autenticado.
-  const roleLinks =
-    userType === "ADM" ? adminLinks : userType === "USUARIO" ? ongLinks : [];
+  const isAdmin =
+    userType === "ADM" || userType === "ADMINISTRADOR" || userType === "MASTER";
 
-  // Fecha o menu antes de solicitar o encerramento da sessão.
+  const roleLinks =
+    userType === "MASTER"
+      ? [...adminLinks, ...masterLinks]
+      : isAdmin
+        ? adminLinks
+        : userType === "ONG"
+          ? ongLinks
+          : [];
+
   function handleLogout() {
     setIsMenuOpen(false);
     onLogout?.();
@@ -242,7 +255,7 @@ function Header({
                 {roleLinks.length > 0 && (
                   <section>
                     <h2 className="mb-2 px-3 text-xs font-bold uppercase tracking-wider text-base-content/50">
-                      {userType === "ADM" ? "Administração" : "Organização"}
+                      {userType === "ONG" ? "Organização" : "Administração"}
                     </h2>
 
                     <ul className="space-y-1">
@@ -341,10 +354,9 @@ function Header({
       <label
         htmlFor="navbar-1-toggle"
         className="fixed inset-0 hidden max-lg:peer-checked:block"
-      ></label>
+      />
 
       <div className="collapse-title navbar">
-        {/* LOGO */}
         <div className="navbar-start">
           <Link
             to="/"
@@ -360,7 +372,6 @@ function Header({
           </Link>
         </div>
 
-        {/* MENU */}
         <div className="navbar-end hidden lg:flex">
           <nav className="hidden items-center gap-10 md:flex">
             {links.map((link) => (
@@ -375,12 +386,10 @@ function Header({
                   transition-colors
                   duration-200
                   hover:text-primary
-
                   ${
                     isActive
                       ? `
                         text-primary
-
                         after:absolute
                         after:left-0
                         after:-bottom-1

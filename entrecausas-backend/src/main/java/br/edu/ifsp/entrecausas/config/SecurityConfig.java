@@ -37,8 +37,7 @@ public class SecurityConfig {
         return username -> {
 
             throw new UsernameNotFoundException(
-                "Autenticação realizada pelo AuthController."
-            );
+                    "Autenticação realizada pelo AuthController.");
         };
     }
 
@@ -108,6 +107,7 @@ public class SecurityConfig {
                     "/api/auth/logout"
                 ).permitAll()
 
+<<<<<<< HEAD
                 // Impede a criação direta de solicitações.
                 // O cadastro e a edição de ONGs criam
                 // suas próprias solicitações internamente.
@@ -240,7 +240,16 @@ public class SecurityConfig {
                     "/api/imagens",
                     "/api/imagens/**"
                 ).denyAll()
+=======
+                // A listagem completa de usuários é exclusiva do MASTER.
+                .requestMatchers(
+                    HttpMethod.GET,
+                    "/api/usuarios"
+                ).hasRole("MASTER")
+>>>>>>> 2c83397 (feat: foi incluido novo tipo de usuario MASTER, foi criado a pagina de listagem de usuarioa e tambem um componente para levara  pagina de login, forma de recuperar senha.)
 
+                // A listagem completa de usuários é exclusiva do MASTER.
+.requestMatchers(HttpMethod.GET, "/api/usuarios").hasRole("MASTER")
                 // Os demais endpoints exigem autenticação.
                 .anyRequest().authenticated()
             )

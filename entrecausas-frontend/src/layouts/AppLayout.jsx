@@ -36,9 +36,13 @@ function AppLayoutContent() {
   const userType =
     funcao === "ADMINISTRADOR"
       ? "ADM"
-      : funcao === "USUARIO"
-        ? "USUARIO"
-        : null;
+      : funcao === "MASTER"
+        ? "MASTER"
+        : funcao === "USUARIO"
+          ? "USUARIO"
+          : funcao === "ONG"
+            ? "ONG"
+            : null;
 
   // Encerra a sessão e retorna à tela de login.
   const handleLogout = useCallback(async () => {
@@ -46,7 +50,6 @@ function AppLayoutContent() {
       await sair();
       navigate("/login", { replace: true });
     } catch (erro) {
-      // Registra a falha sem simular um logout bem-sucedido.
       console.error("Não foi possível encerrar a sessão.", erro);
     }
   }, [sair, navigate]);

@@ -1188,9 +1188,12 @@ public class SolicitacaoService {
 
         if (administrador.getFuncao() == null
                 || administrador.getFuncao().getNome() == null
-                || !administrador.getFuncao()
+                || (!administrador.getFuncao()
                     .getNome()
-                    .equalsIgnoreCase("ADMINISTRADOR")) {
+                    .equalsIgnoreCase("ADMINISTRADOR")
+                && !administrador.getFuncao()
+                    .getNome()
+                    .equalsIgnoreCase("MASTER"))) {
 
             throw new ConflitoException(
                 "O usuário autenticado não possui "

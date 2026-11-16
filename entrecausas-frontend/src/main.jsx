@@ -18,10 +18,14 @@ import EditarOng from "./pages/EditarOng/EditarOng";
 import EditarUsuario from "./pages/EditarUsuario/EditarUsuario";
 import AlterarSenha from "./pages/AlterarSenha/AlterarSenha";
 import SolicitacaoExclusaoOng from "./pages/SolicitacaoExclusaoOng/SolicitacaoExclusaoOng";
+
 import {
   AdminSolicitacoesLayout,
   AdminSolicitacoesPage,
 } from "./pages/AdminSolicitacoes/AdminSolicitacoes";
+
+import ListaUsuarios from "./pages/ListaUsuarios/ListaUsuarios";
+import RecuperarSenha from "./pages/RecuperarSenha/RecuperarSenha";
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
@@ -34,6 +38,7 @@ createRoot(document.getElementById("root")).render(
             <Route path="/detalhes" element={<Detalhes />} />
             <Route path="/impacto" element={<Impacto />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/recuperar-senha" element={<RecuperarSenha />} />
             <Route path="/feed" element={<Feed />} />
             <Route path="/formulario-post" element={<FormularioPost />} />
             <Route path="/Cadastro" element={<CadastroUsuario />} />
@@ -94,11 +99,11 @@ createRoot(document.getElementById("root")).render(
               }
             />
 
-            {/* Toda a área administrativa exige a função administrador. */}
+            {/* Área administrativa: ADMINISTRADOR e MASTER */}
             <Route
               path="/admin/solicitacoes"
               element={
-                <RotaProtegida funcoesPermitidas={["ADMINISTRADOR"]}>
+                <RotaProtegida allowedRoles={["ADMINISTRADOR", "MASTER"]}>
                   <AdminSolicitacoesLayout />
                 </RotaProtegida>
               }
@@ -118,6 +123,16 @@ createRoot(document.getElementById("root")).render(
                 element={<AdminSolicitacoesPage status="reprovada" />}
               />
             </Route>
+
+            {/* Listagem de usuários: exclusiva do MASTER */}
+            <Route
+              path="/admin/usuarios"
+              element={
+                <RotaProtegida allowedRoles={["MASTER"]}>
+                  <ListaUsuarios />
+                </RotaProtegida>
+              }
+            />
           </Route>
         </Routes>
       </AuthProvider>

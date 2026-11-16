@@ -22,171 +22,124 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 @Configuration
 public class DataInitializer {
 
-    // Inicializa os dados fixos do sistema.
-    @Bean
-    CommandLineRunner inicializarDados(
-            FuncaoRepository funcaoRepository,
-            StatusSolicitacaoRepository statusRepository,
-            CategoriaRepository categoriaRepository,
-            UsuarioRepository usuarioRepository,
-            PasswordEncoder passwordEncoder,
-            AesCryptoUtil aesCryptoUtil,
-            HmacCryptoUtil hmacCryptoUtil) {
+        @Bean
+        CommandLineRunner inicializarDados(
+                        FuncaoRepository funcaoRepository,
+                        StatusSolicitacaoRepository statusRepository,
+                        CategoriaRepository categoriaRepository,
+                        UsuarioRepository usuarioRepository,
+                        PasswordEncoder passwordEncoder,
+                        AesCryptoUtil aesCryptoUtil,
+                        HmacCryptoUtil hmacCryptoUtil) {
 
-        return args -> {
+                return args -> {
 
-            // FUNÇÕES
-            criarFuncaoSeNaoExistir(
-                    funcaoRepository, "USUARIO");
+                        // FUNÇÕES
+                        criarFuncaoSeNaoExistir(funcaoRepository, "USUARIO");
+                        criarFuncaoSeNaoExistir(funcaoRepository, "ADMINISTRADOR");
+                        criarFuncaoSeNaoExistir(funcaoRepository, "MASTER");
 
-            criarFuncaoSeNaoExistir(
-                    funcaoRepository, "ADMINISTRADOR");
+                        // STATUS
+                        criarStatusSeNaoExistir(statusRepository, "PENDENTE");
+                        criarStatusSeNaoExistir(statusRepository, "APROVADO");
+                        criarStatusSeNaoExistir(statusRepository, "REJEITADO");
 
-            // STATUS
-            criarStatusSeNaoExistir(
-                    statusRepository, "PENDENTE");
+                        // CATEGORIAS
+                        criarCategoriaSeNaoExistir(categoriaRepository, "Educação");
+                        criarCategoriaSeNaoExistir(categoriaRepository, "Solidariedade");
+                        criarCategoriaSeNaoExistir(categoriaRepository, "Cultura");
+                        criarCategoriaSeNaoExistir(categoriaRepository, "Animais");
+                        criarCategoriaSeNaoExistir(categoriaRepository, "Meio Ambiente");
+                        criarCategoriaSeNaoExistir(categoriaRepository, "Saúde");
+                        criarCategoriaSeNaoExistir(categoriaRepository, "Esporte");
+                        criarCategoriaSeNaoExistir(categoriaRepository, "Outros");
 
-            criarStatusSeNaoExistir(
-                    statusRepository, "APROVADO");
-
-            criarStatusSeNaoExistir(
-                    statusRepository, "REJEITADO");
-
-            // CATEGORIAS
-            criarCategoriaSeNaoExistir(
-                    categoriaRepository, "Educação");
-
-            criarCategoriaSeNaoExistir(
-                    categoriaRepository, "Solidariedade");
-
-            criarCategoriaSeNaoExistir(
-                    categoriaRepository, "Cultura");
-
-            criarCategoriaSeNaoExistir(
-                    categoriaRepository, "Animais");
-
-            criarCategoriaSeNaoExistir(
-                    categoriaRepository, "Meio Ambiente");
-
-            criarCategoriaSeNaoExistir(
-                    categoriaRepository, "Saúde");
-
-            criarCategoriaSeNaoExistir(
-                    categoriaRepository, "Esporte");
-
-            criarCategoriaSeNaoExistir(
-                    categoriaRepository, "Outros");
-
-            // ADMINISTRADOR DE TESTE
-            criarAdministradorSeNaoExistir(
-                    usuarioRepository,
-                    funcaoRepository,
-                    passwordEncoder,
-                    aesCryptoUtil,
-                    hmacCryptoUtil);
-        };
-    }
-
-    private void criarFuncaoSeNaoExistir(
-            FuncaoRepository funcaoRepository,
-            String nome) {
-
-        if (funcaoRepository.findByNome(nome).isEmpty()) {
-            funcaoRepository.save(new Funcao(nome));
-        }
-    }
-
-    private void criarStatusSeNaoExistir(
-            StatusSolicitacaoRepository statusRepository,
-            String nome) {
-
-        if (statusRepository.findByNome(nome).isEmpty()) {
-            statusRepository.save(new StatusSolicitacao(nome));
-        }
-    }
-
-    private void criarCategoriaSeNaoExistir(
-            CategoriaRepository categoriaRepository,
-            String nome) {
-
-        if (categoriaRepository
-                .findByNomeIgnoreCase(nome).isEmpty()) {
-
-            categoriaRepository.save(new Categoria(nome));
-        }
-    }
-
-    // Cria um administrador fictício para testes locais.
-    private void criarAdministradorSeNaoExistir(
-            UsuarioRepository usuarioRepository,
-            FuncaoRepository funcaoRepository,
-            PasswordEncoder passwordEncoder,
-            AesCryptoUtil aesCryptoUtil,
-            HmacCryptoUtil hmacCryptoUtil) {
-
-        String email = "testeentrecausas@gmail.com";
-
-        // Não cria outro administrador com o mesmo e-mail.
-        if (usuarioRepository.existsByEmail(email)) {
-            return;
+                        // ADMINISTRADOR DE TESTE
+                        criarAdministradorSeNaoExistir(
+                                        usuarioRepository,
+                                        funcaoRepository,
+                                        passwordEncoder,
+                                        aesCryptoUtil,
+                                        hmacCryptoUtil);
+                };
         }
 
-        // Dados fictícios para o ambiente de teste.
-        String cpf = "00000000000";
-        String telefone = "11900000000";
+        private void criarFuncaoSeNaoExistir(
+                        FuncaoRepository funcaoRepository,
+                        String nome) {
 
-        // Calcula os hashes para verificar duplicidades.
-        String cpfHash = hmacCryptoUtil.gerarHash(cpf);
-        String telefoneHash =
-                hmacCryptoUtil.gerarHash(telefone);
-
-        // Evita conflitos com dados que já existem no banco.
-        if (usuarioRepository.existsByCpfHash(cpfHash)) {
-            throw new IllegalStateException(
-                    "O CPF fictício do administrador já está cadastrado. "
-                    + "Altere o valor de teste no DataInitializer.");
+                if (funcaoRepository.findByNome(nome).isEmpty()) {
+                        funcaoRepository.save(new Funcao(nome));
+                }
         }
 
-        if (usuarioRepository.existsByTelefoneHash(
-                telefoneHash)) {
+        private void criarStatusSeNaoExistir(
+                        StatusSolicitacaoRepository statusRepository,
+                        String nome) {
 
-            throw new IllegalStateException(
-                    "O telefone fictício do administrador já está cadastrado. "
-                    + "Altere o valor de teste no DataInitializer.");
+                if (statusRepository.findByNome(nome).isEmpty()) {
+                        statusRepository.save(new StatusSolicitacao(nome));
+                }
         }
 
-        // Busca a função de administrador.
-        Funcao funcaoAdmin = funcaoRepository
-                .findByNome("ADMINISTRADOR")
-                .orElseThrow(() -> new IllegalStateException(
-                        "A função ADMINISTRADOR não foi encontrada."));
+        private void criarCategoriaSeNaoExistir(
+                        CategoriaRepository categoriaRepository,
+                        String nome) {
 
-        Usuario administrador = new Usuario();
+                if (categoriaRepository.findByNomeIgnoreCase(nome).isEmpty()) {
+                        categoriaRepository.save(new Categoria(nome));
+                }
+        }
 
-        administrador.setNome("Administrador de Teste");
-        administrador.setEmail(email);
+        private void criarAdministradorSeNaoExistir(
+                        UsuarioRepository usuarioRepository,
+                        FuncaoRepository funcaoRepository,
+                        PasswordEncoder passwordEncoder,
+                        AesCryptoUtil aesCryptoUtil,
+                        HmacCryptoUtil hmacCryptoUtil) {
 
-        // A senha é armazenada somente como hash BCrypt.
-        administrador.setSenha(
-                passwordEncoder.encode("12345678"));
+                String email = "testeentrecausas@gmail.com";
 
-        // Os dados sensíveis seguem o padrão do cadastro normal.
-        administrador.setCpf(
-                aesCryptoUtil.encrypt(cpf));
+                if (usuarioRepository.existsByEmail(email)) {
+                        return;
+                }
 
-        administrador.setCpfHash(cpfHash);
+                String cpf = "00000000000";
+                String telefone = "11900000000";
 
-        administrador.setTelefone(
-                aesCryptoUtil.encrypt(telefone));
+                String cpfHash = hmacCryptoUtil.gerarHash(cpf);
+                String telefoneHash = hmacCryptoUtil.gerarHash(telefone);
 
-        administrador.setTelefoneHash(telefoneHash);
+                if (usuarioRepository.existsByCpfHash(cpfHash)) {
+                        throw new IllegalStateException(
+                                        "O CPF fictício do administrador já está cadastrado. "
+                                                        + "Altere o valor de teste no DataInitializer.");
+                }
 
-        administrador.setFuncao(funcaoAdmin);
+                if (usuarioRepository.existsByTelefoneHash(telefoneHash)) {
+                        throw new IllegalStateException(
+                                        "O telefone fictício do administrador já está cadastrado. "
+                                                        + "Altere o valor de teste no DataInitializer.");
+                }
 
-        // A foto é opcional para esse cadastro.
-        administrador.setFotoPerfil(null);
-        administrador.setFotoAlt(null);
+                Funcao funcaoAdmin = funcaoRepository
+                                .findByNome("ADMINISTRADOR")
+                                .orElseThrow(() -> new IllegalStateException(
+                                                "A função ADMINISTRADOR não foi encontrada."));
 
-        usuarioRepository.save(administrador);
-    }
+                Usuario administrador = new Usuario();
+
+                administrador.setNome("Administrador de Teste");
+                administrador.setEmail(email);
+                administrador.setSenha(passwordEncoder.encode("12345678"));
+                administrador.setCpf(aesCryptoUtil.encrypt(cpf));
+                administrador.setCpfHash(cpfHash);
+                administrador.setTelefone(aesCryptoUtil.encrypt(telefone));
+                administrador.setTelefoneHash(telefoneHash);
+                administrador.setFuncao(funcaoAdmin);
+                administrador.setFotoPerfil(null);
+                administrador.setFotoAlt(null);
+
+                usuarioRepository.save(administrador);
+        }
 }

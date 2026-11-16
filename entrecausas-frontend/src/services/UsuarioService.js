@@ -22,3 +22,7 @@ export async function cadastrarUsuario(dados) {
     body: formData,
   });
 }
+
+export async function listarUsuarios() {
+  return apiFetch("/api/usuarios");
+}

@@ -14,24 +14,36 @@ function normalizarFuncao(funcao) {
 
 // Define o destino conforme a função do usuário.
 function obterDestinoPorFuncao(funcao) {
-  if (funcao === "administrador") {
+  if (funcao === "administrador" || funcao === "master") {
     return "/admin/solicitacoes";
   }
 
-  if (funcao === "usuario") {
+  if (funcao === "usuario" || funcao === "ong") {
     return "/";
   }
 
   return "/login";
 }
 
-export default function RotaProtegida({ children, funcoesPermitidas }) {
+export default function RotaProtegida({
+  children,
+  funcoesPermitidas,
+  allowedRoles,
+  allowPreview = false,
+}) {
   const { usuario, carregando } = useAuth();
   const location = useLocation();
+
+  const isPreview = new URLSearchParams(location.search).get("preview") === "1";
 
   // Aguarda a consulta da sessão antes de decidir o acesso.
   if (carregando) {
     return null;
+  }
+
+  // Permite visualização de páginas configuradas para preview.
+  if (allowPreview && isPreview) {
+    return children;
   }
 
   // Redireciona para o login quando não existe sessão.
@@ -42,9 +54,12 @@ export default function RotaProtegida({ children, funcoesPermitidas }) {
   // Identifica a função retornada pelo backend.
   const funcaoUsuario = normalizarFuncao(usuario.funcaoNome);
 
+  // Mantém compatibilidade com as duas formas de definir permissões.
+  const permissoes = allowedRoles || funcoesPermitidas;
+
   // Impede o acesso a páginas de outra função.
-  if (funcoesPermitidas) {
-    const permissoesNormalizadas = funcoesPermitidas.map(normalizarFuncao);
+  if (permissoes) {
+    const permissoesNormalizadas = permissoes.map(normalizarFuncao);
 
     if (!permissoesNormalizadas.includes(funcaoUsuario)) {
       return <Navigate to={obterDestinoPorFuncao(funcaoUsuario)} replace />;
