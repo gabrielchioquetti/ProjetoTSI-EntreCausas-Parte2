@@ -23,6 +23,20 @@ export async function cadastrarUsuario(dados) {
   });
 }
 
+/**
+ * Lista todos os usuários.
+ * Acesso exclusivo do MASTER.
+ */
 export async function listarUsuarios() {
   return apiFetch("/api/usuarios");
+}
+
+/**
+ * Promove um usuário comum a administrador.
+ * Acesso exclusivo do MASTER.
+ */
+export async function promoverUsuario(id) {
+  return apiFetch(`/api/usuarios/${id}/promover`, {
+    method: "PUT",
+  });
 }

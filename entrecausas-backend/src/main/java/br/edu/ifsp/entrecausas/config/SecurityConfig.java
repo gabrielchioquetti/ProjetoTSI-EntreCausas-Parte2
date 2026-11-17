@@ -107,7 +107,18 @@ public class SecurityConfig {
                     "/api/auth/logout"
                 ).permitAll()
 
-<<<<<<< HEAD
+                // A listagem completa de usuários é exclusiva do MASTER.
+                .requestMatchers(
+                    HttpMethod.GET,
+                    "/api/usuarios"
+                ).hasRole("MASTER")
+
+                // Somente o MASTER pode promover usuários.
+                .requestMatchers(
+                    HttpMethod.PUT,
+                    "/api/usuarios/*/promover"
+                ).hasRole("MASTER")
+
                 // Impede a criação direta de solicitações.
                 // O cadastro e a edição de ONGs criam
                 // suas próprias solicitações internamente.
@@ -116,11 +127,11 @@ public class SecurityConfig {
                     "/api/solicitacoes"
                 ).denyAll()
 
-                // Somente administradores consultam detalhes
+                // Administradores e MASTER consultam detalhes
                 // completos das ONGs.
                 .requestMatchers(
                     "/api/ongs/admin/**"
-                ).hasRole("ADMINISTRADOR")
+                ).hasAnyRole("ADMINISTRADOR", "MASTER")
 
                 // Permite consultar as ONGs publicadas sem login.
                 // O OngService filtra as organizações não aprovadas.
@@ -130,62 +141,62 @@ public class SecurityConfig {
                     "/api/ongs/{id}"
                 ).permitAll()
 
-                // Somente administradores consultam
+                // Administradores e MASTER consultam
                 // e analisam solicitações.
                 .requestMatchers(
                     HttpMethod.GET,
                     "/api/solicitacoes"
-                ).hasRole("ADMINISTRADOR")
+                ).hasAnyRole("ADMINISTRADOR", "MASTER")
 
-                // Somente administradores consultam
+                // Administradores e MASTER consultam
                 // os status disponíveis para análise.
                 .requestMatchers(
                     HttpMethod.GET,
                     "/api/solicitacoes/status-opcoes"
-                ).hasRole("ADMINISTRADOR")
+                ).hasAnyRole("ADMINISTRADOR", "MASTER")
 
-                // Somente administradores consultam
+                // Administradores e MASTER consultam
                 // solicitações por status.
                 .requestMatchers(
                     HttpMethod.GET,
                     "/api/solicitacoes/status/**"
-                ).hasRole("ADMINISTRADOR")
+                ).hasAnyRole("ADMINISTRADOR", "MASTER")
 
-                // Somente administradores consultam
+                // Administradores e MASTER consultam
                 // solicitações por usuário ou ONG.
                 .requestMatchers(
                     HttpMethod.GET,
                     "/api/solicitacoes/usuario/*",
                     "/api/solicitacoes/ong/*"
-                ).hasRole("ADMINISTRADOR")
+                ).hasAnyRole("ADMINISTRADOR", "MASTER")
 
-                // Somente administradores podem comparar
+                // Administradores e MASTER podem comparar
                 // os dados atuais e propostos de uma ONG.
                 .requestMatchers(
                     HttpMethod.GET,
                     "/api/solicitacoes/*/comparacao"
-                ).hasRole("ADMINISTRADOR")
+                ).hasAnyRole("ADMINISTRADOR", "MASTER")
 
-                // Somente administradores consultam
+                // Administradores e MASTER consultam
                 // uma solicitação pelo ID.
                 .requestMatchers(
                     HttpMethod.GET,
                     "/api/solicitacoes/*"
-                ).hasRole("ADMINISTRADOR")
+                ).hasAnyRole("ADMINISTRADOR", "MASTER")
 
-                // Somente administradores podem
+                // Administradores e MASTER podem
                 // aprovar ou rejeitar solicitações.
                 .requestMatchers(
                     HttpMethod.PUT,
                     "/api/solicitacoes/*/analise"
-                ).hasRole("ADMINISTRADOR")
+                ).hasAnyRole("ADMINISTRADOR", "MASTER")
 
                 // Protege qualquer outra rota de solicitações
                 // que venha a ser adicionada futuramente.
                 .requestMatchers(
                     "/api/solicitacoes",
                     "/api/solicitacoes/**"
-                ).hasRole("ADMINISTRADOR")
+                ).hasAnyRole("ADMINISTRADOR", "MASTER")
 
                 // Permite acessar o endpoint de imagens.
                 // A autorização de cada arquivo é verificada
@@ -218,21 +229,21 @@ public class SecurityConfig {
                     "/api/imagens/*"
                 ).denyAll()
 
-                // Somente administradores consultam
+                // Administradores e MASTER consultam
                 // a listagem geral de imagens.
                 .requestMatchers(
                     HttpMethod.GET,
                     "/api/imagens"
-                ).hasRole("ADMINISTRADOR")
+                ).hasAnyRole("ADMINISTRADOR", "MASTER")
 
-                // Temporariamente, somente administradores
+                // Temporariamente, administradores e MASTER
                 // consultam imagens por ID ou ONG.
                 // A autorização por proprietário poderá
                 // ser implementada no ImagemService.
                 .requestMatchers(
                     HttpMethod.GET,
                     "/api/imagens/**"
-                ).hasRole("ADMINISTRADOR")
+                ).hasAnyRole("ADMINISTRADOR", "MASTER")
 
                 // Bloqueia outros métodos não previstos
                 // para gerenciamento direto de imagens.
@@ -240,16 +251,7 @@ public class SecurityConfig {
                     "/api/imagens",
                     "/api/imagens/**"
                 ).denyAll()
-=======
-                // A listagem completa de usuários é exclusiva do MASTER.
-                .requestMatchers(
-                    HttpMethod.GET,
-                    "/api/usuarios"
-                ).hasRole("MASTER")
->>>>>>> 2c83397 (feat: foi incluido novo tipo de usuario MASTER, foi criado a pagina de listagem de usuarioa e tambem um componente para levara  pagina de login, forma de recuperar senha.)
 
-                // A listagem completa de usuários é exclusiva do MASTER.
-.requestMatchers(HttpMethod.GET, "/api/usuarios").hasRole("MASTER")
                 // Os demais endpoints exigem autenticação.
                 .anyRequest().authenticated()
             )

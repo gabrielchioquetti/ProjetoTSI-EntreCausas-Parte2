@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router";
+import { useNavigate } from "react-router";
 
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import CampoFormulario from "../../components/Form/CampoFormulario";
@@ -26,54 +26,20 @@ function normalizarFuncao(funcao) {
 
 // Define o destino padrão conforme a função do usuário.
 function obterDestinoPorFuncao(funcao) {
-  if (funcao === "administrador") {
+  if (funcao === "administrador" || funcao === "master") {
     return "/admin/solicitacoes";
   }
 
-  // A página inicial é o destino provisório do usuário comum.
+  // Usuários comuns são sempre direcionados para Minha Organização.
   if (funcao === "usuario") {
-    return "/";
+    return "/minha-organizacao";
   }
 
   return "/login";
 }
 
-// Evita retornar a páginas incompatíveis com o perfil.
-function destinoPermitido(caminho, funcao) {
-  if (
-    typeof caminho !== "string" ||
-    !caminho.startsWith("/") ||
-    caminho.startsWith("//")
-  ) {
-    return false;
-  }
-
-  // A área administrativa é exclusiva do administrador.
-  if (caminho === "/admin" || caminho.startsWith("/admin/")) {
-    return funcao === "administrador";
-  }
-
-  // Estas páginas são destinadas ao usuário comum.
-  const caminhosDeUsuario = [
-    "/formulario-ong",
-    "/editar-ong",
-    "/solicitacao-exclusao-ong",
-  ];
-
-  const caminhoRestrito = caminhosDeUsuario.some(
-    (rota) => caminho === rota || caminho.startsWith(`${rota}/`),
-  );
-
-  if (caminhoRestrito) {
-    return funcao === "usuario";
-  }
-
-  return true;
-}
-
 function Login() {
   const navigate = useNavigate();
-  const location = useLocation();
   const { setUsuario } = useAuth();
 
   const [imagemAtual, setImagemAtual] = useState(0);
@@ -125,7 +91,7 @@ function Login() {
       const funcao = normalizarFuncao(usuario.funcaoNome);
 
       // Aceita somente os perfis definidos no projeto.
-      if (!["administrador", "usuario"].includes(funcao)) {
+      if (!["administrador", "master", "usuario"].includes(funcao)) {
         throw new Error("O perfil da conta não é reconhecido pelo sistema.");
       }
 
@@ -135,16 +101,8 @@ function Login() {
       // Limpa a senha após o login.
       setSenha("");
 
-      // Define o destino padrão do perfil.
-      const destinoPadrao = obterDestinoPorFuncao(funcao);
-
-      // Recupera a página solicitada antes do login.
-      const paginaSolicitada = location.state?.from?.pathname;
-
-      // Só retorna à página anterior se o perfil puder acessá-la.
-      const destino = destinoPermitido(paginaSolicitada, funcao)
-        ? paginaSolicitada
-        : destinoPadrao;
+      // Redireciona sempre para a página inicial do perfil.
+      const destino = obterDestinoPorFuncao(funcao);
 
       navigate(destino, { replace: true });
     } catch (error) {

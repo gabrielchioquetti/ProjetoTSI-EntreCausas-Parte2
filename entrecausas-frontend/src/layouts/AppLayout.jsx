@@ -32,17 +32,10 @@ function AppLayoutContent() {
       ? usuario.funcaoNome.trim().toUpperCase()
       : "";
 
-  // Adapta a função do backend ao padrão utilizado pelo Header.
-  const userType =
-    funcao === "ADMINISTRADOR"
-      ? "ADM"
-      : funcao === "MASTER"
-        ? "MASTER"
-        : funcao === "USUARIO"
-          ? "USUARIO"
-          : funcao === "ONG"
-            ? "ONG"
-            : null;
+  // Reconhece somente as três funções definidas no backend.
+  const userType = ["USUARIO", "ADMINISTRADOR", "MASTER"].includes(funcao)
+    ? funcao
+    : null;
 
   // Encerra a sessão e retorna à tela de login.
   const handleLogout = useCallback(async () => {
@@ -74,6 +67,7 @@ function AppLayoutContent() {
               totalAprovadas > 0 ? "/admin/solicitacoes/aprovadas" : null,
             rejectedRequests:
               totalReprovadas > 0 ? "/admin/solicitacoes/reprovadas" : null,
+            listUsers: "/admin/usuarios",
           }}
           menuRouteMessages={{
             approvedRequests: "Não há ONGs aprovadas no momento.",

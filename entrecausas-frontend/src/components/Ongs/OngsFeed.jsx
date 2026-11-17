@@ -1,55 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+
 import OngCard from "./OngCard";
-import { apiFetch } from "../../services/Api";
-
-// =========================================================
-// ADAPTAÇÃO DOS DADOS DA API
-// =========================================================
-
-function adaptarOng(dados) {
-  const categorias = (dados.categorias || [])
-    .map((categoria) => categoria.nomeCategoria)
-    .filter(Boolean);
-
-  const descricoes = dados.descricoes || [];
-
-  const descricaoCurta = descricoes.find(
-    (descricao) => descricao.tipoDescricao === "RESUMO",
-  );
-
-  const descricaoCompleta = descricoes.find(
-    (descricao) => descricao.tipoDescricao === "SOBRE",
-  );
-
-  const endereco = dados.endereco;
-
-  const localizacao = endereco
-    ? [endereco.cidade, endereco.estado].filter(Boolean).join(" - ")
-    : "";
-
-  const API_URL = (
-    import.meta.env.VITE_API_URL || "http://localhost:8080"
-  ).replace(/\/$/, "");
-
-  const imagens = (dados.imagens || []).map((imagem) => ({
-    src: imagem.caminho
-      ? `${API_URL}${imagem.caminho}`
-      : "/img/default/ongs.png",
-    alt: imagem.textoAlternativo || `Imagem da ONG ${dados.nome}`,
-  }));
-
-  return {
-    id: dados.idOng,
-    nome: dados.nome,
-    instagram: dados.instagram,
-    categoriaPrincipal: categorias[0] || "",
-    categorias,
-    descricao: descricaoCurta?.texto || descricaoCompleta?.texto || "",
-    descricaoCompleta: descricaoCompleta?.texto || "",
-    localizacao,
-    imagens,
-  };
-}
+import { listarOngsPublicas } from "../../services/OngPublicService";
 
 function OngsFeed() {
   // =========================================================
@@ -78,11 +30,9 @@ function OngsFeed() {
         setCarregando(true);
         setErro("");
 
-        const dados = await apiFetch("/api/ongs");
+        const ongs = await listarOngsPublicas();
 
         if (!ativo) return;
-
-        const ongs = Array.isArray(dados) ? dados.map(adaptarOng) : [];
 
         setListaOngs(ongs);
       } catch (error) {

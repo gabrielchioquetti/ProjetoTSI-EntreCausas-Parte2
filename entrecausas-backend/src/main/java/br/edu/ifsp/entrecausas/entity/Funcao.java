@@ -17,7 +17,7 @@ public class Funcao {
     private Long idFuncao;
 
     // Nome da função/perfil do usuário.
-    // Exemplos: "USUARIO" e "ADMINISTRADOR".
+    // Exemplos: "USUARIO", "ADMINISTRADOR e MASTER".
     // A função não deve ser duplicada no banco.
     @Column(name = "nome", nullable = false, unique = true, length = 50)
     private String nome;

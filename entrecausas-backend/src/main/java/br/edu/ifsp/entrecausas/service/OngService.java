@@ -1444,13 +1444,14 @@ public class OngService {
         String nomeResponsavel = responsavel.getNome();
 
         // Recupera os destinatários enquanto a transação está ativa.
-        List<String> emailsAdministradores = usuarioRepository
-            .findByFuncaoNomeIgnoreCase("ADMINISTRADOR")
-            .stream()
-            .map(usuario -> usuario.getEmail())
-            .filter(email -> email != null && !email.isBlank())
-            .distinct()
-            .toList();
+        List<String> emailsAdministradores = java.util.stream.Stream.concat(
+            usuarioRepository.findByFuncaoNomeIgnoreCase("ADMINISTRADOR").stream(),
+            usuarioRepository.findByFuncaoNomeIgnoreCase("MASTER").stream()
+        )
+        .map(usuario -> usuario.getEmail())
+        .filter(email -> email != null && !email.isBlank())
+        .distinct()
+        .toList();
 
         TransactionSynchronizationManager.registerSynchronization(
             new TransactionSynchronization() {

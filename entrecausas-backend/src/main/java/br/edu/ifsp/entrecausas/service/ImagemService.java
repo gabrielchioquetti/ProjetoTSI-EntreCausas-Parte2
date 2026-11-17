@@ -271,8 +271,7 @@ public class ImagemService {
     }
 
     // Confere a autoridade administrativa.
-    private boolean ehAdministrador(
-            Authentication authentication) {
+    private boolean ehAdministrador(Authentication authentication) {
 
         if (!autenticado(authentication)) {
             return false;
@@ -286,7 +285,9 @@ public class ImagemService {
                 .collect(Collectors.toSet());
 
         return autoridades.contains("ADMINISTRADOR")
-            || autoridades.contains("ROLE_ADMINISTRADOR");
+            || autoridades.contains("ROLE_ADMINISTRADOR")
+            || autoridades.contains("MASTER")
+            || autoridades.contains("ROLE_MASTER");
     }
 
     // Verifica se existe uma sessão autenticada.

@@ -29,110 +29,72 @@ public class SolicitacaoController {
     private final SolicitacaoService solicitacaoService;
 
     // Injeção de dependência via construtor.
-    public SolicitacaoController(
-            SolicitacaoService solicitacaoService) {
-
+    public SolicitacaoController(SolicitacaoService solicitacaoService) {
         this.solicitacaoService = solicitacaoService;
     }
 
     // Lista todas as solicitações.
     @GetMapping
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
-    public ResponseEntity<List<SolicitacaoResponseDTO>>
-            listarTodas() {
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'MASTER')")
+    public ResponseEntity<List<SolicitacaoResponseDTO>> listarTodas() {
 
-        return ResponseEntity.ok(
-            solicitacaoService.listarTodas()
-        );
+        return ResponseEntity.ok(solicitacaoService.listarTodas());
     }
 
     // Busca uma solicitação pelo ID.
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
-    public ResponseEntity<SolicitacaoResponseDTO> buscarPorId(
-            @PathVariable Long id) {
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'MASTER')")
+    public ResponseEntity<SolicitacaoResponseDTO> buscarPorId(@PathVariable Long id) {
 
-        return ResponseEntity.ok(
-            solicitacaoService.buscarPorId(id)
-        );
+        return ResponseEntity.ok(solicitacaoService.buscarPorId(id));
     }
 
     // Lista solicitações pelo status.
     @GetMapping("/status/{idStatus}")
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
-    public ResponseEntity<List<SolicitacaoResponseDTO>>
-            listarPorStatus(
-                @PathVariable Long idStatus) {
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'MASTER')")
+    public ResponseEntity<List<SolicitacaoResponseDTO>> listarPorStatus(@PathVariable Long idStatus) {
 
-        return ResponseEntity.ok(
-            solicitacaoService.listarPorStatus(idStatus)
-        );
+        return ResponseEntity.ok(solicitacaoService.listarPorStatus(idStatus));
     }
 
     // Lista os status disponíveis para análise.
     @GetMapping("/status-opcoes")
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
-    public ResponseEntity<List<StatusSolicitacaoResponseDTO>>
-            listarStatus() {
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'MASTER')")
+    public ResponseEntity<List<StatusSolicitacaoResponseDTO>> listarStatus() {
 
-        return ResponseEntity.ok(
-            solicitacaoService.listarStatus()
-        );
+        return ResponseEntity.ok(solicitacaoService.listarStatus());
     }
 
     // Lista solicitações abertas por um usuário.
     @GetMapping("/usuario/{idUsuario}")
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
-    public ResponseEntity<List<SolicitacaoResponseDTO>>
-            listarPorUsuario(
-                @PathVariable Long idUsuario) {
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'MASTER')")
+    public ResponseEntity<List<SolicitacaoResponseDTO>> listarPorUsuario(@PathVariable Long idUsuario) {
 
-        return ResponseEntity.ok(
-            solicitacaoService.listarPorUsuario(idUsuario)
-        );
+        return ResponseEntity.ok(solicitacaoService.listarPorUsuario(idUsuario));
     }
 
     // Lista solicitações associadas a uma ONG.
     @GetMapping("/ong/{idOng}")
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
-    public ResponseEntity<List<SolicitacaoResponseDTO>>
-            listarPorOng(
-                @PathVariable Long idOng) {
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'MASTER')")
+    public ResponseEntity<List<SolicitacaoResponseDTO>> listarPorOng(@PathVariable Long idOng) {
 
-        return ResponseEntity.ok(
-            solicitacaoService.listarPorOng(idOng)
-        );
+        return ResponseEntity.ok(solicitacaoService.listarPorOng(idOng));
     }
 
     // Consulta os dados atuais e propostos de uma edição.
     @GetMapping("/{id}/comparacao")
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
-    public ResponseEntity<SolicitacaoComparacaoDTO> compararEdicao(
-            @PathVariable Long id,
-            Authentication authentication) {
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'MASTER')")
+    public ResponseEntity<SolicitacaoComparacaoDTO> compararEdicao(@PathVariable Long id, Authentication authentication) {
 
-        return ResponseEntity.ok(
-            solicitacaoService.compararEdicao(
-                id,
-                authentication.getName()
-            )
-        );
+        return ResponseEntity.ok(solicitacaoService.compararEdicao(id, authentication.getName()));
     }
 
     // Aprova ou rejeita uma solicitação.
     @PutMapping("/{id}/analise")
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
-    public ResponseEntity<SolicitacaoResponseDTO> analisar(
-            @PathVariable Long id,
-            @Valid @RequestBody SolicitacaoAnaliseDTO dto,
-            Authentication authentication) {
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'MASTER')")
+    public ResponseEntity<SolicitacaoResponseDTO> analisar(@PathVariable Long id, @Valid @RequestBody SolicitacaoAnaliseDTO dto, Authentication authentication) {
 
-        SolicitacaoResponseDTO response =
-            solicitacaoService.analisar(
-                id,
-                dto,
-                authentication.getName()
-            );
+        SolicitacaoResponseDTO response =  solicitacaoService.analisar(id, dto, authentication.getName());
 
         return ResponseEntity.ok(response);
     }

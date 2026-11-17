@@ -180,9 +180,11 @@ export function AdminSolicitacoesProvider({ children }) {
   const [erro, setErro] = useState("");
   const [statusOpcoes, setStatusOpcoes] = useState([]);
 
-  // Apenas administradores podem analisar solicitações.
+  // ADMINISTRADOR e MASTER podem analisar solicitações.
+  const funcaoUsuario = usuario?.funcaoNome?.trim().toUpperCase();
+
   const ehAdministrador =
-    usuario?.funcaoNome?.trim().toUpperCase() === "ADMINISTRADOR";
+    funcaoUsuario === "ADMINISTRADOR" || funcaoUsuario === "MASTER";
 
   // Atualiza as solicitações com os dados reais das ONGs.
   const carregarSolicitacoes = useCallback(async () => {

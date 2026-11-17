@@ -135,26 +135,27 @@ function Header({
     { nome: "Logar", to: "/login" },
   ];
 
+  // Reconhece somente as três funções definidas no backend.
   const perfilReconhecido =
-    userType === "ADM" ||
     userType === "ADMINISTRADOR" ||
     userType === "MASTER" ||
-    userType === "ONG";
+    userType === "USUARIO";
 
   const hasAuthenticatedMenu = isAuthenticated === true && perfilReconhecido;
 
   const sessaoSemPerfilReconhecido =
     isAuthenticated === true && !perfilReconhecido;
 
-  const isAdmin =
-    userType === "ADM" || userType === "ADMINISTRADOR" || userType === "MASTER";
+  // MASTER possui as mesmas opções administrativas do ADMINISTRADOR.
+  const isAdmin = userType === "ADMINISTRADOR" || userType === "MASTER";
 
+  // Define os links específicos de cada função.
   const roleLinks =
     userType === "MASTER"
       ? [...adminLinks, ...masterLinks]
       : isAdmin
         ? adminLinks
-        : userType === "ONG"
+        : userType === "USUARIO"
           ? ongLinks
           : [];
 
@@ -255,7 +256,7 @@ function Header({
                 {roleLinks.length > 0 && (
                   <section>
                     <h2 className="mb-2 px-3 text-xs font-bold uppercase tracking-wider text-base-content/50">
-                      {userType === "ONG" ? "Organização" : "Administração"}
+                      {userType === "USUARIO" ? "Organização" : "Administração"}
                     </h2>
 
                     <ul className="space-y-1">
@@ -389,15 +390,15 @@ function Header({
                   ${
                     isActive
                       ? `
-                        text-primary
-                        after:absolute
-                        after:left-0
-                        after:-bottom-1
-                        after:h-[3px]
-                        after:w-full
-                        after:rounded-full
-                        after:bg-primary
-                      `
+                          text-primary
+                          after:absolute
+                          after:left-0
+                          after:-bottom-1
+                          after:h-[3px]
+                          after:w-full
+                          after:rounded-full
+                          after:bg-primary
+                        `
                       : "text-base-content"
                   }
                 `}

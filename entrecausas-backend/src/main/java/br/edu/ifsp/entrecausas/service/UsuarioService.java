@@ -17,17 +17,20 @@ import br.edu.ifsp.entrecausas.repository.UsuarioRepository;
 import br.edu.ifsp.entrecausas.security.AesCryptoUtil;
 import br.edu.ifsp.entrecausas.security.HmacCryptoUtil;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
-
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -35,8 +38,11 @@ import java.util.stream.Collectors;
 @Service
 public class UsuarioService {
 
-    // Função padrão para novos usuários.
     private static final String FUNCAO_USUARIO = "USUARIO";
+    private static final String FUNCAO_ADMINISTRADOR = "ADMINISTRADOR";
+    private static final String FUNCAO_MASTER = "MASTER";
+
+    private static final Logger logger = LoggerFactory.getLogger(UsuarioService.class);
 
     private final UsuarioRepository usuarioRepository;
     private final FuncaoRepository funcaoRepository;
@@ -47,15 +53,7 @@ public class UsuarioService {
     private final EmailService emailService;
 
     // Injeta as dependências do serviço.
-    public UsuarioService(
-            UsuarioRepository usuarioRepository,
-            FuncaoRepository funcaoRepository,
-            PasswordEncoder passwordEncoder,
-            AesCryptoUtil aesCryptoUtil,
-            HmacCryptoUtil hmacCryptoUtil,
-            FileStorageService fileStorageService,
-            EmailService emailService
-        ) {
+    public UsuarioService(UsuarioRepository usuarioRepository, FuncaoRepository funcaoRepository, PasswordEncoder passwordEncoder, AesCryptoUtil aesCryptoUtil, HmacCryptoUtil hmacCryptoUtil, FileStorageService fileStorageService, EmailService emailService) {
 
         this.usuarioRepository = usuarioRepository;
         this.funcaoRepository = funcaoRepository;
@@ -68,73 +66,45 @@ public class UsuarioService {
 
     // Cadastra um novo usuário.
     @Transactional
-    public UsuarioResponseDTO cadastrar(
-            UsuarioRequestDTO dto,
-            MultipartFile foto) {
+    public UsuarioResponseDTO cadastrar(UsuarioRequestDTO dto, MultipartFile foto) {
 
         String cpf = normalizarDigitos(dto.cpf());
         String telefone = normalizarDigitos(dto.telefone());
 
         // Verifica se o e-mail já existe.
         if (usuarioRepository.existsByEmail(dto.email())) {
-            throw new ConflitoException(
-                "E-mail já cadastrado no sistema."
-            );
+            throw new ConflitoException("E-mail já cadastrado no sistema.");
         }
 
-        String cpfHash =
-            hmacCryptoUtil.gerarHash(cpf);
-
-        String telefoneHash =
-            hmacCryptoUtil.gerarHash(telefone);
+        String cpfHash = hmacCryptoUtil.gerarHash(cpf);
+        String telefoneHash = hmacCryptoUtil.gerarHash(telefone);
 
         // Verifica se o CPF já existe.
         if (usuarioRepository.existsByCpfHash(cpfHash)) {
-            throw new ConflitoException(
-                "CPF já cadastrado no sistema."
-            );
+            throw new ConflitoException("CPF já cadastrado no sistema.");
         }
 
         // Verifica se o telefone já existe.
-        if (usuarioRepository.existsByTelefoneHash(
-                telefoneHash)) {
-
-            throw new ConflitoException(
-                "Telefone já cadastrado no sistema."
-            );
+        if (usuarioRepository.existsByTelefoneHash(telefoneHash)) {
+            throw new ConflitoException("Telefone já cadastrado no sistema.");
         }
 
         // Busca a função padrão.
-        Funcao funcao = funcaoRepository
-            .findByNome(FUNCAO_USUARIO)
-            .orElseThrow(() ->
-                new IllegalStateException(
-                    "A função USUARIO não foi encontrada."
-                )
-            );
-
+        Funcao funcao = funcaoRepository.findByNome(FUNCAO_USUARIO).orElseThrow(() -> new IllegalStateException("A função USUARIO não foi encontrada."));
         Usuario usuario = new Usuario();
 
         usuario.setNome(dto.nome());
         usuario.setEmail(dto.email());
 
         // Armazena somente o hash da senha.
-        usuario.setSenha(
-            passwordEncoder.encode(dto.senha())
-        );
+        usuario.setSenha(passwordEncoder.encode(dto.senha()));
 
         // Armazena o CPF criptografado.
-        usuario.setCpf(
-            aesCryptoUtil.encrypt(cpf)
-        );
-
+        usuario.setCpf(aesCryptoUtil.encrypt(cpf));
         usuario.setCpfHash(cpfHash);
 
         // Armazena o telefone criptografado.
-        usuario.setTelefone(
-            aesCryptoUtil.encrypt(telefone)
-        );
-
+        usuario.setTelefone(aesCryptoUtil.encrypt(telefone));
         usuario.setTelefoneHash(telefoneHash);
 
         // A função é definida pelo backend.
@@ -144,26 +114,19 @@ public class UsuarioService {
         String caminhoFoto = null;
 
         if (foto != null && !foto.isEmpty()) {
-
-            caminhoFoto =
-                fileStorageService.salvarArquivo(foto);
-
+            caminhoFoto = fileStorageService.salvarArquivo(foto);
             usuario.setFotoPerfil(caminhoFoto);
-
-            usuario.setFotoAlt(
-                gerarFotoAlt(usuario.getNome())
-            );
+            usuario.setFotoAlt(gerarFotoAlt(usuario.getNome()));
         }
 
-        
         try {
 
-            Usuario usuarioSalvo =
-                usuarioRepository.save(usuario);
+            Usuario usuarioSalvo = usuarioRepository.save(usuario);
 
             // Prepara os dados para o e-mail de boas-vindas.
             String nomeUsuario = usuarioSalvo.getNome();
             String emailUsuario = usuarioSalvo.getEmail();
+            Long idUsuario = usuarioSalvo.getIdUsuario();
 
             // Envia o e-mail somente após confirmar a transação.
             TransactionSynchronizationManager.registerSynchronization(
@@ -173,21 +136,11 @@ public class UsuarioService {
                     public void afterCommit() {
 
                         try {
-                            emailService.enviarBoasVindas(
-                                nomeUsuario,
-                                emailUsuario
-                            );
-
+                            emailService.enviarBoasVindas(nomeUsuario, emailUsuario);
                         } catch (RuntimeException erro) {
 
                             // Uma falha no e-mail não desfaz o cadastro.
-                            org.slf4j.LoggerFactory
-                                .getLogger(UsuarioService.class)
-                                .error(
-                                    "Falha ao enviar boas-vindas para o usuário {}.",
-                                    usuarioSalvo.getIdUsuario(),
-                                    erro
-                                );
+                            logger.error("Falha ao enviar boas-vindas para o usuário {}.", idUsuario, erro);
                         }
                     }
                 }
@@ -197,31 +150,30 @@ public class UsuarioService {
 
         } catch (RuntimeException e) {
 
-
             // Remove o arquivo se o banco falhar.
             if (caminhoFoto != null) {
-                fileStorageService.deletarArquivo(
-                    caminhoFoto
-                );
+                fileStorageService.deletarArquivo(caminhoFoto);
             }
 
             throw e;
         }
     }
 
-    // Lista todos os usuários.
+    // Lista todos os usuários. Exclusivo do MASTER.
+    @PreAuthorize("hasRole('MASTER')")
     @Transactional(readOnly = true)
     public List<UsuarioResponseDTO> listarTodos() {
 
-        return usuarioRepository.findAll()
-            .stream()
-            .map(this::converterParaDTO)
-            .collect(Collectors.toList());
+        validarMaster();
+
+        return usuarioRepository.findAll().stream().map(this::converterParaDTO).collect(Collectors.toList());
     }
 
-    // Busca um usuário pelo ID.
+    // Busca o próprio usuário ou permite consulta pelo MASTER.
     @Transactional(readOnly = true)
     public UsuarioResponseDTO buscarPorId(Long id) {
+
+        validarProprioUsuarioOuMaster(id);
 
         Usuario usuario = buscarUsuario(id);
 
@@ -230,10 +182,7 @@ public class UsuarioService {
 
     // Atualiza somente os dados informados do perfil.
     @Transactional
-    public UsuarioResponseDTO atualizar(
-            Long id,
-            UsuarioUpdateDTO dto,
-            MultipartFile novaFoto) {
+    public UsuarioResponseDTO atualizar(Long id, UsuarioUpdateDTO dto, MultipartFile novaFoto) {
 
         // Impede a alteração de outra conta.
         validarProprioUsuario(id);
@@ -246,9 +195,7 @@ public class UsuarioService {
             String nome = dto.nome().trim();
 
             if (nome.isBlank()) {
-                throw new IllegalArgumentException(
-                    "O nome não pode ficar vazio."
-                );
+                throw new IllegalArgumentException("O nome não pode ficar vazio.");
             }
 
             usuario.setNome(nome);
@@ -260,18 +207,12 @@ public class UsuarioService {
             String email = dto.email().trim();
 
             if (email.isBlank()) {
-                throw new IllegalArgumentException(
-                    "O e-mail não pode ficar vazio."
-                );
+                throw new IllegalArgumentException("O e-mail não pode ficar vazio.");
             }
 
             // Verifica e-mail de outro usuário.
-            if (!usuario.getEmail().equalsIgnoreCase(email)
-                    && usuarioRepository.existsByEmail(email)) {
-
-                throw new ConflitoException(
-                    "E-mail já cadastrado por outro usuário."
-                );
+            if (!usuario.getEmail().equalsIgnoreCase(email) && usuarioRepository.existsByEmail(email)) {
+                throw new ConflitoException("E-mail já cadastrado por outro usuário.");
             }
 
             usuario.setEmail(email);
@@ -283,95 +224,57 @@ public class UsuarioService {
             String telefone = dto.telefone().trim();
 
             if (telefone.isBlank()) {
-                throw new IllegalArgumentException(
-                    "O telefone não pode ficar vazio."
-                );
+                throw new IllegalArgumentException("O telefone não pode ficar vazio.");
             }
 
             // A validação do DTO exige somente dígitos.
             telefone = normalizarDigitos(telefone);
 
             if (!telefone.matches("\\d{10,11}")) {
-                throw new IllegalArgumentException(
-                    "O telefone deve conter 10 ou 11 dígitos."
-                );
+                throw new IllegalArgumentException("O telefone deve conter 10 ou 11 dígitos.");
             }
 
-            String telefoneAtual =
-                aesCryptoUtil.decrypt(usuario.getTelefone());
+            String telefoneAtual = aesCryptoUtil.decrypt(usuario.getTelefone());
 
             // Evita recriptografar um telefone não alterado.
             if (!telefone.equals(telefoneAtual)) {
 
-                String telefoneHash =
-                    hmacCryptoUtil.gerarHash(telefone);
+                String telefoneHash = hmacCryptoUtil.gerarHash(telefone);
 
                 // Verifica telefone usado por outro usuário.
-                if (usuarioRepository
-                        .existsByTelefoneHashAndIdUsuarioNot(
-                            telefoneHash,
-                            id)) {
-
-                    throw new ConflitoException(
-                        "Telefone já cadastrado por outro usuário."
-                    );
+                if (usuarioRepository.existsByTelefoneHashAndIdUsuarioNot(telefoneHash, id)) {
+                    throw new ConflitoException("Telefone já cadastrado por outro usuário.");
                 }
 
                 // Atualiza o telefone criptografado.
-                usuario.setTelefone(
-                    aesCryptoUtil.encrypt(telefone)
-                );
-
+                usuario.setTelefone(aesCryptoUtil.encrypt(telefone));
                 usuario.setTelefoneHash(telefoneHash);
             }
         }
 
         // O CPF e seu hash nunca são alterados.
         // A função também não é alterada pelo usuário.
-
-        String fotoAntiga =
-            usuario.getFotoPerfil();
-
+        String fotoAntiga = usuario.getFotoPerfil();
         String novaFotoSalva = null;
 
         // Salva uma nova foto, se enviada.
         if (novaFoto != null && !novaFoto.isEmpty()) {
-
-            novaFotoSalva =
-                fileStorageService.salvarArquivo(novaFoto);
-
+            novaFotoSalva = fileStorageService.salvarArquivo(novaFoto);
             usuario.setFotoPerfil(novaFotoSalva);
-
-            usuario.setFotoAlt(
-                gerarFotoAlt(usuario.getNome())
-            );
-
-        } else if (fotoAntiga != null
-                && !fotoAntiga.isBlank()) {
-
-            usuario.setFotoAlt(
-                gerarFotoAlt(usuario.getNome())
-            );
-
+            usuario.setFotoAlt(gerarFotoAlt(usuario.getNome()));
+        } else if (fotoAntiga != null && !fotoAntiga.isBlank()) {
+            usuario.setFotoAlt(gerarFotoAlt(usuario.getNome()));
         } else {
-
             usuario.setFotoAlt(null);
         }
 
         try {
-
-            Usuario usuarioAtualizado =
-                usuarioRepository.save(usuario);
+            Usuario usuarioAtualizado = usuarioRepository.save(usuario);
 
             // Remove a foto antiga somente depois
             // que o novo registro foi salvo.
-            if (novaFotoSalva != null
-                    && fotoAntiga != null
-                    && !fotoAntiga.isBlank()) {
-
-                fileStorageService.deletarArquivo(
-                    fotoAntiga
-                );
+            if (novaFotoSalva != null && fotoAntiga != null && !fotoAntiga.isBlank()) {
+                fileStorageService.deletarArquivo(fotoAntiga);
             }
 
             return converterParaDTO(usuarioAtualizado);
@@ -380,10 +283,7 @@ public class UsuarioService {
 
             // Remove a nova foto se o banco falhar.
             if (novaFotoSalva != null) {
-
-                fileStorageService.deletarArquivo(
-                    novaFotoSalva
-                );
+                fileStorageService.deletarArquivo(novaFotoSalva);
             }
 
             throw e;
@@ -392,9 +292,7 @@ public class UsuarioService {
 
     // Altera a senha do usuário.
     @Transactional
-    public void alterarSenha(
-            Long id,
-            AlterarSenhaDTO dto) {
+    public void alterarSenha(Long id, AlterarSenhaDTO dto) {
 
         // Impede alterar a senha de outra conta.
         validarProprioUsuario(id);
@@ -402,32 +300,60 @@ public class UsuarioService {
         Usuario usuario = buscarUsuario(id);
 
         // Confere a senha atual.
-        if (!passwordEncoder.matches(
-                dto.senhaAtual(),
-                usuario.getSenha())) {
-
-            throw new IllegalArgumentException(
-                "A senha atual está incorreta."
-            );
+        if (!passwordEncoder.matches(dto.senhaAtual(), usuario.getSenha())) {
+            throw new IllegalArgumentException("A senha atual está incorreta.");
         }
 
         // Confere a nova senha.
-        if (!dto.novaSenha().equals(
-                dto.confirmarSenha())) {
-
-            throw new IllegalArgumentException(
-                "A confirmação da nova senha não confere."
-            );
+        if (!dto.novaSenha().equals(dto.confirmarSenha())) {
+            throw new IllegalArgumentException("A confirmação da nova senha não confere.");
         }
 
         // Gera um novo hash.
-        usuario.setSenha(
-            passwordEncoder.encode(
-                dto.novaSenha()
-            )
-        );
+        usuario.setSenha(passwordEncoder.encode(dto.novaSenha()));
 
         usuarioRepository.save(usuario);
+    }
+
+    // Promove um usuário comum a administrador.
+    @PreAuthorize("hasRole('MASTER')")
+    @Transactional
+    public UsuarioResponseDTO promoverParaAdministrador(Long id) {
+
+        Usuario master = validarMaster();
+        Usuario usuario = buscarUsuario(id);
+
+        // O MASTER não pode promover a própria conta.
+        if (master.getIdUsuario().equals(usuario.getIdUsuario())) {
+            throw new ConflitoException("A conta MASTER não pode ser promovida.");
+        }
+
+        // Somente usuários comuns podem ser promovidos.
+        if (!FUNCAO_USUARIO.equalsIgnoreCase( usuario.getFuncao().getNome())) {
+            throw new ConflitoException("Somente usuários com função USUARIO " + "podem ser promovidos a ADMINISTRADOR.");
+        }
+
+        Funcao funcaoAdministrador = funcaoRepository.findByNome(FUNCAO_ADMINISTRADOR).orElseThrow(() -> new IllegalStateException("A função ADMINISTRADOR não foi encontrada."));
+
+        // Altera somente a função do usuário.
+        usuario.setFuncao(funcaoAdministrador);
+
+        Usuario usuarioAtualizado = usuarioRepository.save(usuario);
+        Long idMaster = master.getIdUsuario();
+        Long idPromovido = usuarioAtualizado.getIdUsuario();
+
+        // Registra a operação no log após o commit.
+        TransactionSynchronizationManager.registerSynchronization(
+            new TransactionSynchronization() {
+
+                @Override
+                public void afterCommit() {
+                    logger.info("Usuário {} promovido de USUARIO para " + "ADMINISTRADOR pelo MASTER {}.", idPromovido, idMaster);
+                }
+            }
+        );
+
+        return converterParaDTO(usuarioAtualizado);
     }
 
     // Remove um usuário.
@@ -439,61 +365,72 @@ public class UsuarioService {
 
         Usuario usuario = buscarUsuario(id);
 
-        // Remove a foto antes do registro.
-        if (usuario.getFotoPerfil() != null
-                && !usuario.getFotoPerfil().isBlank()) {
+        // Impede a exclusão da única conta MASTER.
+        if (FUNCAO_MASTER.equalsIgnoreCase(usuario.getFuncao().getNome())) {
 
-            fileStorageService.deletarArquivo(
-                usuario.getFotoPerfil()
-            );
+            throw new AccessDeniedException("A conta MASTER não pode ser excluída.");
+        }
+
+        // Remove a foto antes do registro.
+        if (usuario.getFotoPerfil() != null && !usuario.getFotoPerfil().isBlank()) {
+            fileStorageService.deletarArquivo(usuario.getFotoPerfil());
         }
 
         usuarioRepository.delete(usuario);
     }
 
+    // Retorna o usuário autenticado ou bloqueia o acesso.
+    private Usuario obterUsuarioAutenticado() {
+
+        Authentication autenticacao = SecurityContextHolder.getContext().getAuthentication();
+
+        if (autenticacao == null || !autenticacao.isAuthenticated() || "anonymousUser".equals(autenticacao.getPrincipal())) {
+            throw new AccessDeniedException("É necessário entrar na conta.");
+        }
+
+        return usuarioRepository.findByEmail(autenticacao.getName()).orElseThrow(() -> new AccessDeniedException("A sessão não possui um usuário válido."));
+    }
+
     // Confirma que a conta pertence ao usuário autenticado.
     private void validarProprioUsuario(Long id) {
 
-        Authentication autenticacao =
-            SecurityContextHolder.getContext()
-                .getAuthentication();
-
-        if (autenticacao == null
-                || !autenticacao.isAuthenticated()
-                || "anonymousUser".equals(
-                    autenticacao.getPrincipal())) {
-
-            throw new AccessDeniedException(
-                "É necessário entrar na conta."
-            );
-        }
-
-        Usuario usuarioAutenticado =
-            usuarioRepository.findByEmail(
-                autenticacao.getName()
-            ).orElseThrow(() ->
-                new AccessDeniedException(
-                    "A sessão não possui um usuário válido."
-                )
-            );
+        Usuario usuarioAutenticado = obterUsuarioAutenticado();
 
         if (!usuarioAutenticado.getIdUsuario().equals(id)) {
-
-            throw new AccessDeniedException(
-                "Você não tem permissão para alterar esta conta."
-            );
+            throw new AccessDeniedException("Você não tem permissão para alterar esta conta.");
         }
+    }
+
+    // Permite consultar a própria conta ou acessar como MASTER.
+    private void validarProprioUsuarioOuMaster(Long id) {
+
+        Usuario usuarioAutenticado = obterUsuarioAutenticado();
+        boolean proprioUsuario = usuarioAutenticado.getIdUsuario().equals(id);
+        boolean master = FUNCAO_MASTER.equalsIgnoreCase(usuarioAutenticado.getFuncao().getNome());
+
+        if (!proprioUsuario && !master) {
+            throw new AccessDeniedException("Você não tem permissão para consultar esta conta.");
+        }
+    }
+
+    // Confirma a função MASTER no banco e na sessão.
+    private Usuario validarMaster() {
+
+        Authentication autenticacao = SecurityContextHolder.getContext().getAuthentication();
+        Usuario usuarioAutenticado = obterUsuarioAutenticado();
+        boolean funcaoNoBanco = FUNCAO_MASTER.equalsIgnoreCase(usuarioAutenticado.getFuncao().getNome());
+        boolean permissaoNaSessao = autenticacao != null && autenticacao.getAuthorities().stream().anyMatch(autoridade -> "ROLE_MASTER".equals(autoridade.getAuthority()));
+
+        if (!funcaoNoBanco || !permissaoNaSessao) {
+            throw new AccessDeniedException("Somente o MASTER pode realizar esta operação.");
+        }
+
+        return usuarioAutenticado;
     }
 
     // Busca um usuário ou lança 404.
     private Usuario buscarUsuario(Long id) {
-
-        return usuarioRepository.findById(id)
-            .orElseThrow(() ->
-                new RecursoNaoEncontradoException(
-                    "Usuário não encontrado com ID: " + id
-                )
-            );
+        return usuarioRepository.findById(id).orElseThrow(() -> new RecursoNaoEncontradoException("Usuário não encontrado com ID: " + id));
     }
 
     // Mantém somente os números.
@@ -517,20 +454,10 @@ public class UsuarioService {
     }
 
     // Converte entidade para DTO de resposta.
-    private UsuarioResponseDTO converterParaDTO(
-            Usuario usuario) {
-
-        return new UsuarioResponseDTO(
-            usuario.getIdUsuario(),
-            usuario.getNome(),
-            usuario.getEmail(),
-            usuario.getFotoPerfil(),
-            usuario.getFotoAlt(),
-            usuario.getFuncao().getNome()
-        );
+    private UsuarioResponseDTO converterParaDTO(Usuario usuario) {
+        return new UsuarioResponseDTO(usuario.getIdUsuario(), usuario.getNome(), usuario.getEmail(), usuario.getFotoPerfil(), usuario.getFotoAlt(), usuario.getFuncao().getNome());
     }
 
-    
     // Busca a entidade do próprio usuário autenticado.
     @Transactional(readOnly = true)
     public Usuario buscarEntidadePorId(Long id) {
@@ -541,5 +468,4 @@ public class UsuarioService {
         // Reutiliza a busca existente.
         return buscarUsuario(id);
     }
-
 }
