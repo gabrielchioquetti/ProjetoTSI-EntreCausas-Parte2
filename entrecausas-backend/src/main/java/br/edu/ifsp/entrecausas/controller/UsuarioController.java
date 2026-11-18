@@ -6,15 +6,12 @@ import br.edu.ifsp.entrecausas.dto.UsuarioResponseDTO;
 import br.edu.ifsp.entrecausas.dto.UsuarioUpdateDTO;
 import br.edu.ifsp.entrecausas.service.UsuarioService;
 
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -25,16 +22,16 @@ import java.util.List;
 public class UsuarioController {
 
     private final UsuarioService usuarioService;
-    private final AuthController authController;
 
-    public UsuarioController(UsuarioService usuarioService, AuthController authController) {
+    public UsuarioController(UsuarioService usuarioService) {
         this.usuarioService = usuarioService;
-        this.authController = authController;
     }
 
     // Cadastra um novo usuário.
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<UsuarioResponseDTO> cadastrar(@Valid @RequestPart("usuario") UsuarioRequestDTO dto, @RequestPart(value = "foto", required = false)MultipartFile foto) {
+    public ResponseEntity<UsuarioResponseDTO> cadastrar(
+            @Valid @RequestPart("usuario") UsuarioRequestDTO dto,
+            @RequestPart(value = "foto", required = false) MultipartFile foto) {
 
         UsuarioResponseDTO usuario = usuarioService.cadastrar(dto, foto);
 
@@ -52,29 +49,35 @@ public class UsuarioController {
     // Busca um usuário pelo ID.
     // O serviço verifica se é o proprietário ou MASTER.
     @GetMapping("/{id}")
-    public ResponseEntity<UsuarioResponseDTO> buscarPorId(@PathVariable Long id) {
+    public ResponseEntity<UsuarioResponseDTO> buscarPorId(
+            @PathVariable Long id) {
 
         return ResponseEntity.ok(usuarioService.buscarPorId(id));
     }
 
     // Atualiza os dados do usuário autenticado.
-    @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<UsuarioResponseDTO> atualizar(@PathVariable Long id, @Valid @RequestPart("usuario") UsuarioUpdateDTO dto, @RequestPart(value = "foto", required = false) MultipartFile foto, Authentication autenticacao, HttpServletRequest request, HttpServletResponse response) {
+    @PutMapping(
+            value = "/{id}",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE
+    )
+    public ResponseEntity<UsuarioResponseDTO> atualizar(
+            @PathVariable Long id,
+            @Valid @RequestPart("usuario") UsuarioUpdateDTO dto,
+            @RequestPart(value = "foto", required = false) MultipartFile foto) {
 
         // O serviço verifica se o usuário é o proprietário.
-        UsuarioResponseDTO usuarioAtualizado = usuarioService.atualizar(id, dto, foto);
-
-        // Se o e-mail mudou, atualiza a autenticação.
-        if (autenticacao != null && !autenticacao.getName().equals(usuarioAtualizado.email())) {
-            authController.atualizarAutenticacao(usuarioAtualizado, request, response);
-        }
+        // Se o e-mail mudar, as sessões serão expiradas após o commit.
+        UsuarioResponseDTO usuarioAtualizado =
+                usuarioService.atualizar(id, dto, foto);
 
         return ResponseEntity.ok(usuarioAtualizado);
     }
 
     // Altera a senha do próprio usuário.
     @PutMapping("/{id}/senha")
-    public ResponseEntity<Void> alterarSenha(@PathVariable Long id, @Valid @RequestBody AlterarSenhaDTO dto) {
+    public ResponseEntity<Void> alterarSenha(
+            @PathVariable Long id,
+            @Valid @RequestBody AlterarSenhaDTO dto) {
 
         usuarioService.alterarSenha(id, dto);
 
@@ -85,9 +88,11 @@ public class UsuarioController {
     // Operação exclusiva do MASTER.
     @PreAuthorize("hasRole('MASTER')")
     @PutMapping("/{id}/promover")
-    public ResponseEntity<UsuarioResponseDTO> promover(@PathVariable Long id) {
+    public ResponseEntity<UsuarioResponseDTO> promover(
+            @PathVariable Long id) {
 
-        UsuarioResponseDTO usuario = usuarioService.promoverParaAdministrador(id);
+        UsuarioResponseDTO usuario =
+                usuarioService.promoverParaAdministrador(id);
 
         return ResponseEntity.ok(usuario);
     }

@@ -62,6 +62,20 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
+  // Reconhece quando o backend invalida a sessão.
+  useEffect(() => {
+    function tratarSessaoExpirada() {
+      setUsuario(null);
+      setCarregando(false);
+    }
+
+    window.addEventListener("sessao-expirada", tratarSessaoExpirada);
+
+    return () => {
+      window.removeEventListener("sessao-expirada", tratarSessaoExpirada);
+    };
+  }, []);
+
   // Atualiza os dados do usuário após editar o perfil.
   const atualizarUsuario = useCallback((dadosAtualizados) => {
     if (!dadosAtualizados) {

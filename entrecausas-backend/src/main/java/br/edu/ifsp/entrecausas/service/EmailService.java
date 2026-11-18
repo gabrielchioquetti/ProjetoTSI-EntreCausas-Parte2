@@ -184,6 +184,36 @@ public class EmailService {
         return enviarEmail(emailUsuario, assunto, mensagem);
     }
 
+    // Envia o código de recuperação de senha ao usuário.
+    public boolean enviarCodigoRecuperacao(
+            String nomeUsuario,
+            String emailUsuario,
+            String codigo
+    ) {
+        String assunto = "EntreCausas - Recuperação de senha";
+
+        String mensagem = """
+                Olá, %s!
+
+                Recebemos uma solicitação de recuperação de senha
+                para sua conta no EntreCausas.
+
+                Seu código de verificação é:
+
+                %s
+
+                Este código é válido por 10 minutos.
+
+                Se você não solicitou a recuperação de senha,
+                ignore este e-mail.
+
+                Atenciosamente,
+                Equipe EntreCausas
+                """.formatted(nomeUsuario, codigo);
+
+        return enviarEmail(emailUsuario, assunto, mensagem);
+    }
+
     // Converte o tipo técnico para uma descrição legível.
     private String descricaoTipo(String tipoSolicitacao) {
 

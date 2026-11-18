@@ -24,6 +24,8 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.session.SessionInformation;
+import org.springframework.security.core.session.SessionRegistry;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import org.springframework.stereotype.Service;
@@ -51,10 +53,10 @@ public class UsuarioService {
     private final HmacCryptoUtil hmacCryptoUtil;
     private final FileStorageService fileStorageService;
     private final EmailService emailService;
+    private final SessionRegistry sessionRegistry;
 
     // Injeta as dependências do serviço.
-    public UsuarioService(UsuarioRepository usuarioRepository, FuncaoRepository funcaoRepository, PasswordEncoder passwordEncoder, AesCryptoUtil aesCryptoUtil, HmacCryptoUtil hmacCryptoUtil, FileStorageService fileStorageService, EmailService emailService) {
-
+    public UsuarioService(UsuarioRepository usuarioRepository, FuncaoRepository funcaoRepository, PasswordEncoder passwordEncoder, AesCryptoUtil aesCryptoUtil, HmacCryptoUtil hmacCryptoUtil, FileStorageService fileStorageService, EmailService emailService, SessionRegistry sessionRegistry) {
         this.usuarioRepository = usuarioRepository;
         this.funcaoRepository = funcaoRepository;
         this.passwordEncoder = passwordEncoder;
@@ -62,6 +64,7 @@ public class UsuarioService {
         this.hmacCryptoUtil = hmacCryptoUtil;
         this.fileStorageService = fileStorageService;
         this.emailService = emailService;
+        this.sessionRegistry = sessionRegistry;
     }
 
     // Cadastra um novo usuário.
@@ -179,15 +182,21 @@ public class UsuarioService {
 
         return converterParaDTO(usuario);
     }
-
+    
     // Atualiza somente os dados informados do perfil.
     @Transactional
-    public UsuarioResponseDTO atualizar(Long id, UsuarioUpdateDTO dto, MultipartFile novaFoto) {
+    public UsuarioResponseDTO atualizar(
+            Long id,
+            UsuarioUpdateDTO dto,
+            MultipartFile novaFoto) {
 
         // Impede a alteração de outra conta.
         validarProprioUsuario(id);
 
         Usuario usuario = buscarUsuario(id);
+
+        // Guarda o e-mail anterior para controlar as sessões.
+        String emailAnterior = usuario.getEmail();
 
         // Atualiza o nome somente quando informado.
         if (dto.nome() != null) {
@@ -195,7 +204,9 @@ public class UsuarioService {
             String nome = dto.nome().trim();
 
             if (nome.isBlank()) {
-                throw new IllegalArgumentException("O nome não pode ficar vazio.");
+                throw new IllegalArgumentException(
+                        "O nome não pode ficar vazio."
+                );
             }
 
             usuario.setNome(nome);
@@ -207,12 +218,18 @@ public class UsuarioService {
             String email = dto.email().trim();
 
             if (email.isBlank()) {
-                throw new IllegalArgumentException("O e-mail não pode ficar vazio.");
+                throw new IllegalArgumentException(
+                        "O e-mail não pode ficar vazio."
+                );
             }
 
             // Verifica e-mail de outro usuário.
-            if (!usuario.getEmail().equalsIgnoreCase(email) && usuarioRepository.existsByEmail(email)) {
-                throw new ConflitoException("E-mail já cadastrado por outro usuário.");
+            if (!usuario.getEmail().equalsIgnoreCase(email)
+                    && usuarioRepository.existsByEmail(email)) {
+
+                throw new ConflitoException(
+                        "E-mail já cadastrado por outro usuário."
+                );
             }
 
             usuario.setEmail(email);
@@ -224,30 +241,44 @@ public class UsuarioService {
             String telefone = dto.telefone().trim();
 
             if (telefone.isBlank()) {
-                throw new IllegalArgumentException("O telefone não pode ficar vazio.");
+                throw new IllegalArgumentException(
+                        "O telefone não pode ficar vazio."
+                );
             }
 
             // A validação do DTO exige somente dígitos.
             telefone = normalizarDigitos(telefone);
 
             if (!telefone.matches("\\d{10,11}")) {
-                throw new IllegalArgumentException("O telefone deve conter 10 ou 11 dígitos.");
+                throw new IllegalArgumentException(
+                        "O telefone deve conter 10 ou 11 dígitos."
+                );
             }
 
-            String telefoneAtual = aesCryptoUtil.decrypt(usuario.getTelefone());
+            String telefoneAtual =
+                    aesCryptoUtil.decrypt(usuario.getTelefone());
 
             // Evita recriptografar um telefone não alterado.
             if (!telefone.equals(telefoneAtual)) {
 
-                String telefoneHash = hmacCryptoUtil.gerarHash(telefone);
+                String telefoneHash =
+                        hmacCryptoUtil.gerarHash(telefone);
 
                 // Verifica telefone usado por outro usuário.
-                if (usuarioRepository.existsByTelefoneHashAndIdUsuarioNot(telefoneHash, id)) {
-                    throw new ConflitoException("Telefone já cadastrado por outro usuário.");
+                if (usuarioRepository
+                        .existsByTelefoneHashAndIdUsuarioNot(
+                                telefoneHash, id)) {
+
+                    throw new ConflitoException(
+                            "Telefone já cadastrado por outro usuário."
+                    );
                 }
 
                 // Atualiza o telefone criptografado.
-                usuario.setTelefone(aesCryptoUtil.encrypt(telefone));
+                usuario.setTelefone(
+                        aesCryptoUtil.encrypt(telefone)
+                );
+
                 usuario.setTelefoneHash(telefoneHash);
             }
         }
@@ -259,21 +290,61 @@ public class UsuarioService {
 
         // Salva uma nova foto, se enviada.
         if (novaFoto != null && !novaFoto.isEmpty()) {
-            novaFotoSalva = fileStorageService.salvarArquivo(novaFoto);
+
+            novaFotoSalva =
+                    fileStorageService.salvarArquivo(novaFoto);
+
             usuario.setFotoPerfil(novaFotoSalva);
-            usuario.setFotoAlt(gerarFotoAlt(usuario.getNome()));
-        } else if (fotoAntiga != null && !fotoAntiga.isBlank()) {
-            usuario.setFotoAlt(gerarFotoAlt(usuario.getNome()));
+            usuario.setFotoAlt(
+                    gerarFotoAlt(usuario.getNome())
+            );
+
+        } else if (fotoAntiga != null
+                && !fotoAntiga.isBlank()) {
+
+            usuario.setFotoAlt(
+                    gerarFotoAlt(usuario.getNome())
+            );
+
         } else {
             usuario.setFotoAlt(null);
         }
 
         try {
-            Usuario usuarioAtualizado = usuarioRepository.save(usuario);
+
+            Usuario usuarioAtualizado =
+                    usuarioRepository.save(usuario);
+
+            // Invalida as sessões quando o e-mail é alterado.
+            if (!emailAnterior.equalsIgnoreCase(
+                    usuarioAtualizado.getEmail())) {
+
+                // Executa somente após confirmar a transação.
+                TransactionSynchronizationManager
+                        .registerSynchronization(
+                            new TransactionSynchronization() {
+
+                                @Override
+                                public void afterCommit() {
+
+                                    for (SessionInformation sessao :
+                                            sessionRegistry.getAllSessions(
+                                                    emailAnterior,
+                                                    false)) {
+
+                                        sessao.expireNow();
+                                    }
+                                }
+                            }
+                        );
+            }
 
             // Remove a foto antiga somente depois
             // que o novo registro foi salvo.
-            if (novaFotoSalva != null && fotoAntiga != null && !fotoAntiga.isBlank()) {
+            if (novaFotoSalva != null
+                    && fotoAntiga != null
+                    && !fotoAntiga.isBlank()) {
+
                 fileStorageService.deletarArquivo(fotoAntiga);
             }
 
@@ -289,7 +360,7 @@ public class UsuarioService {
             throw e;
         }
     }
-
+    
     // Altera a senha do usuário.
     @Transactional
     public void alterarSenha(Long id, AlterarSenhaDTO dto) {
@@ -300,19 +371,51 @@ public class UsuarioService {
         Usuario usuario = buscarUsuario(id);
 
         // Confere a senha atual.
-        if (!passwordEncoder.matches(dto.senhaAtual(), usuario.getSenha())) {
-            throw new IllegalArgumentException("A senha atual está incorreta.");
+        if (!passwordEncoder.matches(
+                dto.senhaAtual(),
+                usuario.getSenha())) {
+
+            throw new IllegalArgumentException(
+                    "A senha atual está incorreta."
+            );
         }
 
         // Confere a nova senha.
         if (!dto.novaSenha().equals(dto.confirmarSenha())) {
-            throw new IllegalArgumentException("A confirmação da nova senha não confere.");
+
+            throw new IllegalArgumentException(
+                    "A confirmação da nova senha não confere."
+            );
         }
 
         // Gera um novo hash.
-        usuario.setSenha(passwordEncoder.encode(dto.novaSenha()));
+        usuario.setSenha(
+                passwordEncoder.encode(dto.novaSenha())
+        );
 
         usuarioRepository.save(usuario);
+
+        // Guarda o e-mail usado para identificar as sessões.
+        String emailUsuario = usuario.getEmail();
+
+        // Expira as sessões somente após confirmar
+        // a alteração da senha no banco de dados.
+        TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+
+                    @Override
+                    public void afterCommit() {
+
+                        for (SessionInformation sessao :
+                                sessionRegistry.getAllSessions(
+                                        emailUsuario,
+                                        false)) {
+
+                            sessao.expireNow();
+                        }
+                    }
+                }
+        );
     }
 
     // Promove um usuário comum a administrador.

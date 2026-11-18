@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
+
 import CampoFormulario from "../../components/Form/CampoFormulario";
 import Footer from "../../components/Footer/Footer";
 import OngsCarrossel from "../../components/Ongs/OngsCarrossel";
+
 import { apiFetch } from "../../services/Api.js";
 import { useAuth } from "../../contexts/AuthContext.jsx";
 
@@ -170,6 +172,21 @@ function EditarUsuario() {
           body: formulario,
         },
       );
+
+      // Verifica se o e-mail foi alterado.
+      const emailFoiAlterado =
+        usuario.email.trim().toLowerCase() !==
+        usuarioAtualizado.email.trim().toLowerCase();
+
+      if (emailFoiAlterado) {
+        // O backend já expirou as sessões após salvar o novo e-mail.
+        // Informa imediatamente ao AuthContext que deve
+        // limpar a autenticação atual.
+        window.dispatchEvent(new Event("sessao-expirada"));
+
+        // A rota protegida poderá encaminhar o usuário ao login.
+        return;
+      }
 
       // Sincroniza o Header e os demais componentes.
       atualizarUsuario(usuarioAtualizado);

@@ -5,17 +5,24 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.core.session.SessionRegistry;
+
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
+import org.springframework.security.web.session.ConcurrentSessionFilter;
+import org.springframework.security.web.session.SessionInformationExpiredStrategy;
 
 @Configuration
 @EnableMethodSecurity
@@ -24,7 +31,6 @@ public class SecurityConfig {
     // Persiste a autenticação na sessão HTTP.
     @Bean
     public SecurityContextRepository securityContextRepository() {
-
         return new HttpSessionSecurityContextRepository();
     }
 
@@ -33,18 +39,41 @@ public class SecurityConfig {
     // Impede a criação automática do usuário em memória.
     @Bean
     public UserDetailsService userDetailsService() {
-
         return username -> {
-
             throw new UsernameNotFoundException(
-                    "Autenticação realizada pelo AuthController.");
+                "Autenticação realizada pelo AuthController."
+            );
+        };
+    }
+
+    // Retorna HTTP 401 quando uma sessão foi expirada.
+    @Bean
+    public SessionInformationExpiredStrategy
+            sessionInformationExpiredStrategy() {
+
+        return event -> {
+            HttpServletResponse response = event.getResponse();
+
+            response.setStatus(
+                HttpServletResponse.SC_UNAUTHORIZED
+            );
+
+            response.setContentType("application/json");
+            response.setCharacterEncoding("UTF-8");
+
+            response.getWriter().write(
+                "{\"mensagem\":\"Sua sessão foi encerrada por segurança. Entre novamente na sua conta.\"}"
+            );
         };
     }
 
     @Bean
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http,
-            SecurityContextRepository securityContextRepository)
+            SecurityContextRepository securityContextRepository,
+            SessionRegistry sessionRegistry,
+            SessionInformationExpiredStrategy
+                    sessionInformationExpiredStrategy)
             throws Exception {
 
         http
@@ -107,7 +136,17 @@ public class SecurityConfig {
                     "/api/auth/logout"
                 ).permitAll()
 
-                // A listagem completa de usuários é exclusiva do MASTER.
+                // Permite solicitar e validar a recuperação
+                // de senha sem estar autenticado.
+                .requestMatchers(
+                    HttpMethod.POST,
+                    "/api/recuperacao-senha/solicitar",
+                    "/api/recuperacao-senha/validar",
+                    "/api/recuperacao-senha/redefinir"
+                ).permitAll()
+
+                // A listagem completa de usuários
+                // é exclusiva do MASTER.
                 .requestMatchers(
                     HttpMethod.GET,
                     "/api/usuarios"
@@ -206,7 +245,8 @@ public class SecurityConfig {
                     "/uploads/*"
                 ).permitAll()
 
-                // Impede outros métodos HTTP no caminho de uploads.
+                // Impede outros métodos HTTP
+                // no caminho de uploads.
                 .requestMatchers(
                     "/uploads/**"
                 ).denyAll()
@@ -318,6 +358,16 @@ public class SecurityConfig {
                         )
                 )
             );
+
+        // Verifica se a sessão foi marcada como expirada.
+        // O registro das sessões será integrado ao AuthController.
+        http.addFilterBefore(
+            new ConcurrentSessionFilter(
+                sessionRegistry,
+                sessionInformationExpiredStrategy
+            ),
+            AuthorizationFilter.class
+        );
 
         return http.build();
     }

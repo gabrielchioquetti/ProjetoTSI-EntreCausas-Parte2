@@ -1,5 +1,14 @@
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8080";
 
+// Endpoints que podem retornar HTTP 401 sem representar
+// necessariamente a expiração de uma sessão autenticada.
+const endpointsAutenticacaoPublica = [
+  "/api/auth/login",
+  "/api/recuperacao-senha/solicitar",
+  "/api/recuperacao-senha/validar",
+  "/api/recuperacao-senha/redefinir",
+];
+
 // Obtém o token CSRF necessário para requisições que alteram dados.
 async function obterTokenCsrf() {
   const resposta = await fetch(`${API_URL}/api/auth/csrf`, {
@@ -17,6 +26,21 @@ async function obterTokenCsrf() {
   }
 
   return dados.token;
+}
+
+// Informa ao AuthContext que a sessão autenticada expirou.
+function informarSessaoExpirada(endpoint, status) {
+  if (status !== 401) {
+    return;
+  }
+
+  // Não interfere nas tentativas de login
+  // ou no processo público de recuperação de senha.
+  if (endpointsAutenticacaoPublica.includes(endpoint)) {
+    return;
+  }
+
+  window.dispatchEvent(new Event("sessao-expirada"));
 }
 
 // Realiza requisições à API mantendo a sessão autenticada.
@@ -55,6 +79,9 @@ export async function apiFetch(endpoint, options = {}) {
 
   // Trata os erros retornados pelo backend.
   if (!resposta.ok) {
+    // Notifica o AuthContext quando a sessão deixa de ser válida.
+    informarSessaoExpirada(endpoint, resposta.status);
+
     const erro = new Error(
       dados?.mensagem ||
         dados?.detail ||

@@ -1,4 +1,3 @@
-
 package br.edu.ifsp.entrecausas.controller;
 
 import br.edu.ifsp.entrecausas.dto.LoginRequestDTO;
@@ -6,9 +5,7 @@ import br.edu.ifsp.entrecausas.dto.UsuarioPerfilDTO;
 import br.edu.ifsp.entrecausas.dto.UsuarioResponseDTO;
 
 import br.edu.ifsp.entrecausas.entity.Usuario;
-
 import br.edu.ifsp.entrecausas.repository.UsuarioRepository;
-
 import br.edu.ifsp.entrecausas.security.AesCryptoUtil;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -24,6 +21,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.session.SessionInformation;
+import org.springframework.security.core.session.SessionRegistry;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -49,17 +48,20 @@ public class AuthController {
     private final PasswordEncoder passwordEncoder;
     private final SecurityContextRepository securityContextRepository;
     private final AesCryptoUtil aesCryptoUtil;
+    private final SessionRegistry sessionRegistry;
 
     public AuthController(
             UsuarioRepository usuarioRepository,
             PasswordEncoder passwordEncoder,
             SecurityContextRepository securityContextRepository,
-            AesCryptoUtil aesCryptoUtil) {
+            AesCryptoUtil aesCryptoUtil,
+            SessionRegistry sessionRegistry) {
 
         this.usuarioRepository = usuarioRepository;
         this.passwordEncoder = passwordEncoder;
         this.securityContextRepository = securityContextRepository;
         this.aesCryptoUtil = aesCryptoUtil;
+        this.sessionRegistry = sessionRegistry;
     }
 
     // Realiza o login e cria a sessão autenticada.
@@ -98,7 +100,7 @@ public class AuthController {
             request.changeSessionId();
         }
 
-        // Salva a autenticação na sessão HTTP.
+        // Salva e registra a autenticação na sessão HTTP.
         salvarAutenticacao(
             autenticacao,
             request,
@@ -247,7 +249,8 @@ public class AuthController {
         );
     }
 
-    // Persiste a autenticação na sessão HTTP.
+    // Persiste a autenticação na sessão HTTP
+    // e registra a sessão para controle de expiração.
     private void salvarAutenticacao(
             Authentication autenticacao,
             HttpServletRequest request,
@@ -264,6 +267,27 @@ public class AuthController {
             request,
             response
         );
+
+        HttpSession sessao = request.getSession(false);
+
+        if (sessao != null) {
+            String idSessao = sessao.getId();
+
+            // Remove o registro anterior dessa sessão,
+            // caso exista uma atualização de autenticação.
+            SessionInformation registroAnterior =
+                sessionRegistry.getSessionInformation(idSessao);
+
+            if (registroAnterior != null) {
+                sessionRegistry.removeSessionInformation(idSessao);
+            }
+
+            // Registra a sessão com o e-mail do usuário.
+            sessionRegistry.registerNewSession(
+                idSessao,
+                autenticacao.getName()
+            );
+        }
     }
 
     // Busca somente o usuário da sessão autenticada.
@@ -293,6 +317,10 @@ public class AuthController {
             HttpSession sessao = request.getSession(false);
 
             if (sessao != null) {
+                sessionRegistry.removeSessionInformation(
+                    sessao.getId()
+                );
+
                 sessao.invalidate();
             }
         }
