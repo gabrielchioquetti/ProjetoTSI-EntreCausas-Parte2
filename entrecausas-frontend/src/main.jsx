@@ -9,6 +9,8 @@ import AppLayout from "./layouts/AppLayout";
 import Home from "./pages/Home";
 import Detalhes from "./pages/Detalhes/detalhes";
 import Impacto from "./pages/Impacto/impacto";
+import FaleConosco from "./pages/FaleConosco/FaleConosco";
+import Autoria from "./pages/Autoria/Autoria";
 import Login from "./pages/Login/Login";
 import FormularioPost from "./styles/FormularioPost/FormularioPost";
 import FormularioOng from "./pages/FormularioOng/FormularioOng";
@@ -25,6 +27,7 @@ import {
 } from "./pages/AdminSolicitacoes/AdminSolicitacoes";
 
 import ListaUsuarios from "./pages/ListaUsuarios/ListaUsuarios";
+import HistoricoAuditoria from "./pages/HistoricoAuditoria/HistoricoAuditoria";
 import RecuperarSenha from "./pages/RecuperarSenha/RecuperarSenha";
 
 createRoot(document.getElementById("root")).render(
@@ -37,6 +40,8 @@ createRoot(document.getElementById("root")).render(
             <Route path="/" element={<Home />} />
             <Route path="/detalhes" element={<Detalhes />} />
             <Route path="/impacto" element={<Impacto />} />
+            <Route path="/fale-conosco" element={<FaleConosco />} />
+            <Route path="/autoria" element={<Autoria />} />
             <Route path="/login" element={<Login />} />
             <Route path="/recuperar-senha" element={<RecuperarSenha />} />
             <Route path="/feed" element={<Feed />} />
@@ -128,8 +133,24 @@ createRoot(document.getElementById("root")).render(
             <Route
               path="/admin/usuarios"
               element={
-                <RotaProtegida allowedRoles={["MASTER"]}>
+                <RotaProtegida
+                  allowedRoles={["MASTER"]}
+                  allowPreview
+                >
                   <ListaUsuarios />
+                </RotaProtegida>
+              }
+            />
+
+            {/* Histórico de auditoria demonstrativo, exclusivo do MASTER */}
+            <Route
+              path="/admin/historico"
+              element={
+                <RotaProtegida
+                  allowedRoles={["MASTER"]}
+                  allowPreview
+                >
+                  <HistoricoAuditoria />
                 </RotaProtegida>
               }
             />

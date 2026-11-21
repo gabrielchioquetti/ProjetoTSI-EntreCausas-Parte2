@@ -180,9 +180,11 @@ export function AdminSolicitacoesProvider({ children }) {
   const [erro, setErro] = useState("");
   const [statusOpcoes, setStatusOpcoes] = useState([]);
 
-  // Apenas administradores podem analisar solicitações.
-  const ehAdministrador =
-    usuario?.funcaoNome?.trim().toUpperCase() === "ADMINISTRADOR";
+  // Administradores e masters podem analisar solicitações.
+  const ehAdministrador = [
+    "ADMINISTRADOR",
+    "MASTER",
+  ].includes(usuario?.funcaoNome?.trim().toUpperCase());
 
   // Atualiza as solicitações com os dados reais das ONGs.
   const carregarSolicitacoes = useCallback(async () => {
@@ -254,7 +256,9 @@ export function AdminSolicitacoesProvider({ children }) {
   const carregarComparacao = useCallback(
     async (id) => {
       if (!ehAdministrador) {
-        throw new Error("Apenas administradores podem comparar solicitações.");
+        throw new Error(
+          "Apenas administradores ou masters podem comparar solicitações.",
+        );
       }
 
       // Consulta a comparação e o cadastro real das categorias.
@@ -302,7 +306,9 @@ export function AdminSolicitacoesProvider({ children }) {
   const atualizarStatus = useCallback(
     async (id, status, justificativa = "") => {
       if (!ehAdministrador) {
-        throw new Error("Apenas administradores podem analisar solicitações.");
+        throw new Error(
+          "Apenas administradores ou masters podem analisar solicitações.",
+        );
       }
 
       if (!["aprovada", "reprovada"].includes(status)) {

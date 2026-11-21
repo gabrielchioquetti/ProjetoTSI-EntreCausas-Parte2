@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
 
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import CampoFormulario from "../../components/Form/CampoFormulario";
@@ -26,7 +26,7 @@ function normalizarFuncao(funcao) {
 
 // Define o destino padrão conforme a função do usuário.
 function obterDestinoPorFuncao(funcao) {
-  if (funcao === "administrador") {
+  if (funcao === "administrador" || funcao === "master") {
     return "/admin/solicitacoes";
   }
 
@@ -48,9 +48,9 @@ function destinoPermitido(caminho, funcao) {
     return false;
   }
 
-  // A área administrativa é exclusiva do administrador.
+  // A área administrativa é exclusiva dos perfis administrativos.
   if (caminho === "/admin" || caminho.startsWith("/admin/")) {
-    return funcao === "administrador";
+    return funcao === "administrador" || funcao === "master";
   }
 
   // Estas páginas são destinadas ao usuário comum.
@@ -125,7 +125,7 @@ function Login() {
       const funcao = normalizarFuncao(usuario.funcaoNome);
 
       // Aceita somente os perfis definidos no projeto.
-      if (!["administrador", "usuario"].includes(funcao)) {
+      if (!["administrador", "master", "usuario"].includes(funcao)) {
         throw new Error("O perfil da conta não é reconhecido pelo sistema.");
       }
 
@@ -361,6 +361,22 @@ function Login() {
                     )}
                   </button>
                 </form>
+
+                <div className="mt-6 border-t border-base-300 pt-5 text-center">
+                  <p className="text-sm font-semibold text-base-content">
+                    Ainda não tem uma conta?
+                  </p>
+                  <p className="mt-1 text-sm text-base-content/55">
+                    Crie seu cadastro e comece a descobrir novas causas.
+                  </p>
+                  <Link
+                    to="/Cadastro"
+                    className="mt-3 inline-flex items-center gap-2 font-bold text-primary transition-colors hover:text-primary/75 hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
+                  >
+                    Criar minha conta
+                    <i className="fa-solid fa-arrow-right" aria-hidden="true" />
+                  </Link>
+                </div>
               </div>
             </div>
           </div>

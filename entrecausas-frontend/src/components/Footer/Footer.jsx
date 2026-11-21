@@ -7,10 +7,10 @@ function Footer() {
     },
     {
       nome: "Gabriel Leme",
-      linkedin: "www.linkedin.com/in/gabriel-leme-644b4b261",
+      linkedin: "https://www.linkedin.com/in/gabriel-leme-644b4b261",
     },
     {
-      nome: "Pedro BB",
+      nome: "Pedrinho Bevbe",
       linkedin: "https://www.linkedin.com/",
     },
   ];
@@ -57,6 +57,10 @@ function Footer() {
           <div className="flex flex-col gap-3">
             <a href="/" className="link-hover link">
               Início
+            </a>
+
+            <a href="/autoria" className="link-hover link">
+              Sobre o projeto
             </a>
 
             <a href="/#descobrir" className="link-hover link">
