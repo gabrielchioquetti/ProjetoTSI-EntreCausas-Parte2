@@ -21,6 +21,11 @@ const adminLinks = [
 
 const masterLinks = [
   { key: "listUsers", nome: "Listagem de Usuários", icon: "fa-users" },
+  {
+    key: "auditHistory",
+    nome: "Histórico de Auditoria",
+    icon: "fa-clipboard-list",
+  },
 ];
 
 const ongLinks = [
@@ -42,6 +47,16 @@ const ongLinks = [
 ];
 
 const sharedNavigationLinks = [
+  {
+    key: "home",
+    nome: "Início",
+    icon: "fa-house",
+  },
+  {
+    key: "about",
+    nome: "Sobre o projeto",
+    icon: "fa-circle-info",
+  },
   {
     key: "discoverOrganizations",
     nome: "Descobrir ONGs",
@@ -129,6 +144,7 @@ function Header({
 
   const links = [
     { nome: "Home", to: "/" },
+    { nome: "Sobre", to: "/autoria" },
     { nome: "Descobrir ONGs", to: "/feed" },
     { nome: "Impacto", to: "/impacto" },
     { nome: "Fale Conosco", to: "/fale-conosco" },
@@ -228,7 +244,7 @@ function Header({
           `}
         >
           <Link
-            to="/"
+            to="/autoria"
             onClick={() => setIsMenuOpen(false)}
             className="mb-8 text-2xl font-extrabold tracking-tight text-primary"
           >
@@ -360,7 +376,7 @@ function Header({
       <div className="collapse-title navbar">
         <div className="navbar-start">
           <Link
-            to="/"
+            to="/autoria"
             className="
               text-2xl
               font-extrabold

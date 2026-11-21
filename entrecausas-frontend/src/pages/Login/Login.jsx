@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 
 import { useAuth } from "../../contexts/AuthContext.jsx";
 import CampoFormulario from "../../components/Form/CampoFormulario";
@@ -319,6 +319,24 @@ function Login() {
                     )}
                   </button>
                 </form>
+
+                <div className="mt-6 border-t border-base-300 pt-5 text-center">
+                  <p className="text-sm font-semibold text-base-content">
+                    Ainda não tem uma conta?
+                  </p>
+
+                  <p className="mt-1 text-sm text-base-content/55">
+                    Crie seu cadastro e comece a descobrir novas causas.
+                  </p>
+
+                  <Link
+                    to="/Cadastro"
+                    className="mt-3 inline-flex items-center gap-2 font-bold text-primary transition-colors hover:text-primary/75 hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
+                  >
+                    Criar minha conta
+                    <i className="fa-solid fa-arrow-right" aria-hidden="true" />
+                  </Link>
+                </div>
               </div>
             </div>
           </div>

@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { AdminSolicitacoesProvider } from "../contexts/AdminSolicitacoesProvider";
 import { useAdminSolicitacoes } from "../contexts/useAdminSolicitacoes";
 import { useAuth } from "../contexts/AuthContext.jsx";
-import { Outlet, useNavigate } from "react-router";
+import { Outlet, useLocation, useNavigate } from "react-router";
 import Header from "../components/Header/Header";
 
 function AppLayout() {
@@ -15,8 +15,12 @@ function AppLayout() {
 
 function AppLayoutContent() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { usuario, carregando, sair } = useAuth();
   const { solicitacoes } = useAdminSolicitacoes();
+  const isMasterPreview =
+    ["/admin/usuarios", "/admin/historico"].includes(location.pathname) &&
+    new URLSearchParams(location.search).get("preview") === "1";
 
   const totalAprovadas = solicitacoes.filter(
     (solicitacao) => solicitacao.status === "aprovada",
@@ -51,9 +55,11 @@ function AppLayoutContent() {
     <>
       {!carregando && (
         <Header
-          isAuthenticated={Boolean(usuario)}
-          userType={userType}
+          isAuthenticated={Boolean(usuario) || isMasterPreview}
+          userType={isMasterPreview ? "MASTER" : userType}
           menuRoutes={{
+            home: "/",
+            about: "/autoria",
             editOrganization: "/editar-ong",
             editUser: "/editar-usuario",
             viewOrganization: "/minha-organizacao",
@@ -62,7 +68,15 @@ function AppLayoutContent() {
             discoverOrganizations: "/feed",
             impact: "/impacto",
             contact: "/fale-conosco",
-            requestHistory: "/admin/solicitacoes",
+            requestHistory: isMasterPreview
+              ? null
+              : "/admin/solicitacoes",
+            listUsers: isMasterPreview
+              ? "/admin/usuarios?preview=1"
+              : undefined,
+            auditHistory: isMasterPreview
+              ? "/admin/historico?preview=1"
+              : "/admin/historico",
             approvedRequests:
               totalAprovadas > 0 ? "/admin/solicitacoes/aprovadas" : null,
             rejectedRequests:
@@ -70,10 +84,17 @@ function AppLayoutContent() {
             listUsers: "/admin/usuarios",
           }}
           menuRouteMessages={{
+            requestHistory: isMasterPreview
+              ? "Disponível após autenticação administrativa"
+              : undefined,
             approvedRequests: "Não há ONGs aprovadas no momento.",
             rejectedRequests: "Não há ONGs reprovadas no momento.",
           }}
-          onLogout={handleLogout}
+          onLogout={
+            isMasterPreview
+              ? () => navigate("/", { replace: true })
+              : handleLogout
+          }
         />
       )}
 
