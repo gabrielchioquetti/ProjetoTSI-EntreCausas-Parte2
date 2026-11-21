@@ -1,4 +1,5 @@
 import { useState } from "react";
+
 import { Link, NavLink } from "react-router";
 
 const adminLinks = [
@@ -87,6 +88,13 @@ const profileLinks = [
   },
 ];
 
+// Exclusão de conta disponível somente para USUARIO e ADMINISTRADOR.
+const deleteAccountLink = {
+  key: "deleteAccount",
+  nome: "Excluir minha conta",
+  icon: "fa-trash",
+};
+
 function AuthenticatedMenuLink({
   item,
   to,
@@ -174,6 +182,12 @@ function Header({
         : userType === "USUARIO"
           ? ongLinks
           : [];
+
+  // Adiciona a exclusão de conta somente aos perfis permitidos.
+  const linksPerfil =
+    userType === "USUARIO" || userType === "ADMINISTRADOR"
+      ? [...profileLinks, deleteAccountLink]
+      : profileLinks;
 
   function handleLogout() {
     setIsMenuOpen(false);
@@ -296,11 +310,15 @@ function Header({
                   </h2>
 
                   <ul className="space-y-1">
-                    {profileLinks.map((item) => (
+                    {linksPerfil.map((item) => (
                       <li key={item.key}>
                         <AuthenticatedMenuLink
                           item={item}
-                          to={menuRoutes?.[item.key]}
+                          to={
+                            item.key === "deleteAccount"
+                              ? "/excluir-conta"
+                              : menuRoutes?.[item.key]
+                          }
                           disabledReason={menuRouteMessages?.[item.key]}
                           onClick={() => setIsMenuOpen(false)}
                         />

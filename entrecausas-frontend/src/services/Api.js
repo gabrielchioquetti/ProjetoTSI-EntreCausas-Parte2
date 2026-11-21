@@ -28,8 +28,8 @@ async function obterTokenCsrf() {
   return dados.token;
 }
 
-// Informa ao AuthContext que a sessão autenticada expirou.
-function informarSessaoExpirada(endpoint, status) {
+// Informa ao AuthContext quando uma sessão foi expirada.
+function informarSessaoExpirada(endpoint, status, dados) {
   if (status !== 401) {
     return;
   }
@@ -40,7 +40,21 @@ function informarSessaoExpirada(endpoint, status) {
     return;
   }
 
-  window.dispatchEvent(new Event("sessao-expirada"));
+  // Identifica a expiração pelo código retornado pelo backend.
+  if (dados?.codigo !== "SESSAO_EXPIRADA") {
+    return;
+  }
+
+  window.dispatchEvent(
+    new CustomEvent("sessao-expirada", {
+      detail: {
+        codigo: dados.codigo,
+        mensagem:
+          dados.mensagem ||
+          "Sua sessão foi encerrada por segurança. Entre novamente na sua conta.",
+      },
+    }),
+  );
 }
 
 // Realiza requisições à API mantendo a sessão autenticada.
@@ -79,8 +93,8 @@ export async function apiFetch(endpoint, options = {}) {
 
   // Trata os erros retornados pelo backend.
   if (!resposta.ok) {
-    // Notifica o AuthContext quando a sessão deixa de ser válida.
-    informarSessaoExpirada(endpoint, resposta.status);
+    // Notifica apenas quando o backend confirma a expiração.
+    informarSessaoExpirada(endpoint, resposta.status, dados);
 
     const erro = new Error(
       dados?.mensagem ||

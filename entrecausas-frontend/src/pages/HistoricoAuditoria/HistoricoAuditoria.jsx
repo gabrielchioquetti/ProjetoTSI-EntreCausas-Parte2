@@ -1,185 +1,16 @@
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+
 import Footer from "../../components/Footer/Footer.jsx";
+import { apiFetch } from "../../services/Api.js";
 
-const registrosAuditoria = [
-  {
-    id: 501,
-    dataHora: "2026-11-20T14:22:00-03:00",
-    operacao: "UPDATE",
-    tabela: "solicitacao",
-    registroId: 84,
-    acao: "Aprovou o cadastro da ONG Instituto Caminhos",
-    ator: { nome: "Marina Costa", perfil: "ADMINISTRADOR", id: 12 },
-    dadosAnteriores: {
-      status: "PENDENTE",
-      idAdministrador: null,
-      motivoRejeicao: null,
-    },
-    dadosNovos: {
-      status: "APROVADO",
-      idAdministrador: 12,
-      motivoRejeicao: null,
-    },
-  },
-  {
-    id: 500,
-    dataHora: "2026-11-20T14:21:58-03:00",
-    operacao: "INSERT",
-    tabela: "ong",
-    registroId: 29,
-    acao: "Cadastro publicado após aprovação",
-    ator: { nome: "Marina Costa", perfil: "ADMINISTRADOR", id: 12 },
-    dadosAnteriores: null,
-    dadosNovos: {
-      nome: "Instituto Caminhos",
-      cidade: "Itapetininga",
-      status: "ATIVA",
-    },
-  },
-  {
-    id: 499,
-    dataHora: "2026-11-20T13:46:11-03:00",
-    operacao: "INSERT",
-    tabela: "solicitacao",
-    registroId: 84,
-    acao: "Enviou cadastro da ONG Instituto Caminhos para análise",
-    ator: { nome: "Rafael Nunes", perfil: "USUARIO", id: 208 },
-    dadosAnteriores: null,
-    dadosNovos: {
-      tipoSolicitacao: "CADASTRO",
-      idOng: 29,
-      status: "PENDENTE",
-    },
-  },
-  {
-    id: 498,
-    dataHora: "2026-11-20T11:05:42-03:00",
-    operacao: "UPDATE",
-    tabela: "usuario",
-    registroId: 4,
-    acao: "Alterou o perfil de usuário para administrador",
-    ator: { nome: "Conta Master", perfil: "MASTER", id: 1 },
-    dadosAnteriores: { funcao: "USUARIO" },
-    dadosNovos: { funcao: "ADMINISTRADOR" },
-  },
-  {
-    id: 497,
-    dataHora: "2026-11-19T16:38:09-03:00",
-    operacao: "UPDATE",
-    tabela: "solicitacao",
-    registroId: 82,
-    acao: "Rejeitou o cadastro da ONG Patas Unidas",
-    ator: { nome: "Marina Costa", perfil: "ADMINISTRADOR", id: 12 },
-    dadosAnteriores: {
-      status: "PENDENTE",
-      idAdministrador: null,
-      motivoRejeicao: null,
-    },
-    dadosNovos: {
-      status: "REJEITADO",
-      idAdministrador: 12,
-      motivoRejeicao: "Documentação incompleta.",
-    },
-  },
-  {
-    id: 496,
-    dataHora: "2026-11-19T15:22:31-03:00",
-    operacao: "INSERT",
-    tabela: "ong_categoria",
-    registroId: 63,
-    acao: "Vinculou categoria à ONG Rede Aprender",
-    ator: { nome: "Marina Costa", perfil: "ADMINISTRADOR", id: 12 },
-    dadosAnteriores: null,
-    dadosNovos: { idOng: 27, categoria: "Educação" },
-  },
-  {
-    id: 495,
-    dataHora: "2026-11-19T15:20:03-03:00",
-    operacao: "UPDATE",
-    tabela: "ong",
-    registroId: 27,
-    acao: "Atualizou dados da ONG Rede Aprender",
-    ator: { nome: "Marina Costa", perfil: "ADMINISTRADOR", id: 12 },
-    dadosAnteriores: { telefone: "(15) 3000-0000", cidade: "Tatuí" },
-    dadosNovos: { telefone: "(15) 3000-0012", cidade: "Itapetininga" },
-  },
-  {
-    id: 494,
-    dataHora: "2026-11-18T10:14:55-03:00",
-    operacao: "DELETE",
-    tabela: "imagem",
-    registroId: 136,
-    acao: "Removeu imagem recusada da ONG Sementes do Amanhã",
-    ator: { nome: "Conta Master", perfil: "MASTER", id: 1 },
-    dadosAnteriores: {
-      idOng: 24,
-      arquivo: "documento-antigo.jpg",
-      motivo: "Arquivo duplicado",
-    },
-    dadosNovos: null,
-  },
-  {
-    id: 493,
-    dataHora: "2026-11-18T09:52:17-03:00",
-    operacao: "INSERT",
-    tabela: "usuario",
-    registroId: 208,
-    acao: "Criou uma conta de usuário",
-    ator: { nome: "Rafael Nunes", perfil: "USUARIO", id: 208 },
-    dadosAnteriores: null,
-    dadosNovos: { nome: "Rafael Nunes", funcao: "USUARIO" },
-  },
-  {
-    id: 492,
-    dataHora: "2026-11-17T17:03:28-03:00",
-    operacao: "UPDATE",
-    tabela: "solicitacao",
-    registroId: 80,
-    acao: "Aprovou edição da ONG Casa do Bem",
-    ator: { nome: "Marina Costa", perfil: "ADMINISTRADOR", id: 12 },
-    dadosAnteriores: { status: "PENDENTE", tipoSolicitacao: "EDICAO" },
-    dadosNovos: {
-      status: "APROVADO",
-      tipoSolicitacao: "EDICAO",
-      idAdministrador: 12,
-    },
-  },
-  {
-    id: 491,
-    dataHora: "2026-11-17T13:40:00-03:00",
-    operacao: "DELETE",
-    tabela: "ong",
-    registroId: 18,
-    acao: "Excluiu ONG após aprovação da solicitação",
-    ator: { nome: "Conta Master", perfil: "MASTER", id: 1 },
-    dadosAnteriores: {
-      nome: "Projeto Viver",
-      status: "EXCLUSAO_APROVADA",
-    },
-    dadosNovos: null,
-  },
-  {
-    id: 490,
-    dataHora: "2026-11-16T08:18:43-03:00",
-    operacao: "UPDATE",
-    tabela: "descricao",
-    registroId: 72,
-    acao: "Atualizou a descrição da ONG Casa do Bem",
-    ator: { nome: "Joana Lima", perfil: "ONG", id: 34 },
-    dadosAnteriores: { tipo: "RESUMO", texto: "Apoio à comunidade." },
-    dadosNovos: {
-      tipo: "RESUMO",
-      texto: "Apoio e atividades para famílias da comunidade.",
-    },
-  },
-];
+const ITENS_POR_PAGINA = 6;
 
-const operacoes = ["INSERT", "UPDATE", "DELETE"];
+const operacoes = ["INSERT", "UPDATE"];
+const tabelas = ["solicitacao"];
 
 const classeOperacao = {
   INSERT: "border-green-200 bg-green-50 text-green-800",
   UPDATE: "border-blue-200 bg-blue-50 text-blue-800",
-  DELETE: "border-red-200 bg-red-50 text-red-800",
 };
 
 const formatoDataHora = new Intl.DateTimeFormat("pt-BR", {
@@ -187,8 +18,19 @@ const formatoDataHora = new Intl.DateTimeFormat("pt-BR", {
   timeStyle: "medium",
 });
 
+// Formata a data recebida do backend.
 function formatarDataHora(dataHora) {
-  return formatoDataHora.format(new Date(dataHora));
+  if (!dataHora) {
+    return "Não informado";
+  }
+
+  const data = new Date(
+    /(?:Z|[+-]\d{2}:\d{2})$/.test(dataHora) ? dataHora : `${dataHora}-03:00`,
+  );
+
+  return Number.isNaN(data.getTime())
+    ? "Data inválida"
+    : formatoDataHora.format(data);
 }
 
 function formatarCampo(valor) {
@@ -203,6 +45,22 @@ function formatarCampo(valor) {
   return String(valor);
 }
 
+// Consulta os registros utilizando a API centralizada.
+async function consultarAuditoria(parametros, signal) {
+  const query = new URLSearchParams();
+
+  Object.entries(parametros).forEach(([chave, valor]) => {
+    if (valor !== "" && valor !== null && valor !== undefined) {
+      query.set(chave, String(valor));
+    }
+  });
+
+  return apiFetch(`/api/auditoria?${query.toString()}`, {
+    method: "GET",
+    signal,
+  });
+}
+
 function CartaoResumo({ titulo, total, icone, cor }) {
   return (
     <article className="flex items-center gap-4 rounded-2xl border border-base-300 bg-base-100 p-5 shadow-sm">
@@ -212,8 +70,10 @@ function CartaoResumo({ titulo, total, icone, cor }) {
       >
         <i className={`fa-solid ${icone} text-lg`} />
       </span>
+
       <div>
         <p className="text-sm font-semibold text-base-content/60">{titulo}</p>
+
         <p className="text-2xl font-black text-base-content">{total}</p>
       </div>
     </article>
@@ -227,6 +87,7 @@ function SecaoDados({ titulo, dados, semDados }) {
         <i className="fa-solid fa-code text-primary" aria-hidden="true" />
         {titulo}
       </h3>
+
       {dados ? (
         <dl className="space-y-3">
           {Object.entries(dados).map(([chave, valor]) => (
@@ -237,6 +98,7 @@ function SecaoDados({ titulo, dados, semDados }) {
               <dt className="break-words text-xs font-bold uppercase tracking-wide text-base-content/55">
                 {chave}
               </dt>
+
               <dd className="break-words text-sm text-base-content">
                 {formatarCampo(valor)}
               </dd>
@@ -257,53 +119,145 @@ export default function HistoricoAuditoria() {
     operacao: "",
     tabela: "",
   });
+
   const [pagina, setPagina] = useState(1);
   const [registroSelecionado, setRegistroSelecionado] = useState(null);
-  const itensPorPagina = 6;
 
-  const tabelas = useMemo(
-    () => [...new Set(registrosAuditoria.map((registro) => registro.tabela))].sort(),
-    [],
-  );
+  const [registrosPagina, setRegistrosPagina] = useState([]);
+  const [totalRegistros, setTotalRegistros] = useState(0);
+  const [totalPaginas, setTotalPaginas] = useState(1);
 
-  const registrosFiltrados = useMemo(
-    () =>
-      registrosAuditoria.filter((registro) => {
-        const data = registro.dataHora.slice(0, 10);
+  const [resumoOperacoes, setResumoOperacoes] = useState({
+    INSERT: null,
+    UPDATE: null,
+  });
 
-        return (
-          (!filtros.dataInicial || data >= filtros.dataInicial) &&
-          (!filtros.dataFinal || data <= filtros.dataFinal) &&
-          (!filtros.operacao || registro.operacao === filtros.operacao) &&
-          (!filtros.tabela || registro.tabela === filtros.tabela)
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState("");
+  const [recarregar, setRecarregar] = useState(0);
+
+  // Consulta os registros com filtros e paginação no backend.
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function carregarRegistros() {
+      setCarregando(true);
+      setErro("");
+      setRegistrosPagina([]);
+
+      try {
+        const resposta = await consultarAuditoria(
+          {
+            pagina: pagina - 1,
+            tamanho: ITENS_POR_PAGINA,
+            ...filtros,
+          },
+          controller.signal,
         );
-      }),
-    [filtros],
-  );
 
-  const totalPaginas = Math.max(
-    1,
-    Math.ceil(registrosFiltrados.length / itensPorPagina),
-  );
-  const registrosPagina = registrosFiltrados.slice(
-    (pagina - 1) * itensPorPagina,
-    pagina * itensPorPagina,
-  );
-  const resumoOperacoes = operacoes.map((operacao) => ({
-    operacao,
-    total: registrosAuditoria.filter(
-      (registro) => registro.operacao === operacao,
-    ).length,
-  }));
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        setRegistrosPagina(resposta.content ?? []);
+        setTotalRegistros(resposta.totalElements ?? 0);
+        setTotalPaginas(Math.max(1, resposta.totalPages ?? 1));
+      } catch (error) {
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        setErro(error.message);
+        setRegistrosPagina([]);
+        setTotalRegistros(0);
+        setTotalPaginas(1);
+      } finally {
+        if (!controller.signal.aborted) {
+          setCarregando(false);
+        }
+      }
+    }
+
+    carregarRegistros();
+
+    return () => controller.abort();
+  }, [pagina, filtros, recarregar]);
+
+  // Consulta os totais globais das operações.
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function carregarResumo() {
+      setResumoOperacoes({
+        INSERT: null,
+        UPDATE: null,
+      });
+
+      try {
+        const [insercoes, atualizacoes] = await Promise.all([
+          consultarAuditoria(
+            {
+              pagina: 0,
+              tamanho: 1,
+              operacao: "INSERT",
+            },
+            controller.signal,
+          ),
+          consultarAuditoria(
+            {
+              pagina: 0,
+              tamanho: 1,
+              operacao: "UPDATE",
+            },
+            controller.signal,
+          ),
+        ]);
+
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        setResumoOperacoes({
+          INSERT: insercoes.totalElements ?? 0,
+          UPDATE: atualizacoes.totalElements ?? 0,
+        });
+      } catch {
+        if (!controller.signal.aborted) {
+          setResumoOperacoes({
+            INSERT: null,
+            UPDATE: null,
+          });
+        }
+      }
+    }
+
+    carregarResumo();
+
+    return () => controller.abort();
+  }, [recarregar]);
 
   function atualizarFiltro(campo, valor) {
-    setFiltros((atuais) => ({ ...atuais, [campo]: valor }));
+    setFiltros((atuais) => ({
+      ...atuais,
+      [campo]: valor,
+    }));
+
     setPagina(1);
   }
 
   function limparFiltros() {
-    setFiltros({ dataInicial: "", dataFinal: "", operacao: "", tabela: "" });
+    setFiltros({
+      dataInicial: "",
+      dataFinal: "",
+      operacao: "",
+      tabela: "",
+    });
+
     setPagina(1);
+  }
+
+  function atualizarRegistros() {
+    setRecarregar((atual) => atual + 1);
   }
 
   return (
@@ -315,20 +269,28 @@ export default function HistoricoAuditoria() {
               <span className="h-[3px] w-8 rounded-full bg-primary" />
               Administração
             </p>
+
             <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
               <div>
                 <h1 className="text-3xl font-black tracking-tight text-base-content sm:text-4xl">
                   Histórico de Auditoria
                 </h1>
+
                 <p className="mt-2 max-w-3xl text-sm leading-6 text-base-content/65 sm:text-base">
                   Acompanhe operações realizadas, registros afetados e quem
                   executou cada ação.
                 </p>
               </div>
-              <span className="badge badge-outline h-auto gap-2 px-3 py-2 text-xs font-semibold">
-                <i className="fa-solid fa-flask text-primary" aria-hidden="true" />
-                Dados demonstrativos
-              </span>
+
+              <button
+                type="button"
+                className="btn btn-outline btn-sm"
+                onClick={atualizarRegistros}
+                disabled={carregando}
+              >
+                <i className="fa-solid fa-rotate" aria-hidden="true" />
+                Atualizar
+              </button>
             </div>
           </header>
 
@@ -340,34 +302,30 @@ export default function HistoricoAuditoria() {
               className="fa-solid fa-circle-info text-primary"
               aria-hidden="true"
             />
+
             <span>
-              Esta tela usa registros fictícios para demonstração; ainda não
-              está conectada às triggers ou a uma API de auditoria.
+              O histórico apresenta registros reais de criação e alteração de
+              status das solicitações de ONGs, armazenados automaticamente pelas
+              triggers do banco de dados.
             </span>
           </div>
 
           <section
             aria-label="Resumo das operações"
-            className="mb-6 grid gap-4 sm:grid-cols-3"
+            className="mb-6 grid gap-4 sm:grid-cols-2"
           >
-            {resumoOperacoes.map(({ operacao, total }) => (
+            {operacoes.map((operacao) => (
               <CartaoResumo
                 key={operacao}
                 titulo={`${operacao} registrados`}
-                total={total}
+                total={resumoOperacoes[operacao] ?? "—"}
                 icone={
-                  operacao === "INSERT"
-                    ? "fa-circle-plus"
-                    : operacao === "UPDATE"
-                      ? "fa-pen-to-square"
-                      : "fa-trash-can"
+                  operacao === "INSERT" ? "fa-circle-plus" : "fa-pen-to-square"
                 }
                 cor={
                   operacao === "INSERT"
                     ? "bg-green-100 text-green-700"
-                    : operacao === "UPDATE"
-                      ? "bg-blue-100 text-blue-700"
-                      : "bg-red-100 text-red-700"
+                    : "bg-blue-100 text-blue-700"
                 }
               />
             ))}
@@ -377,10 +335,12 @@ export default function HistoricoAuditoria() {
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="font-bold text-base-content">Filtros</h2>
+
                 <p className="text-xs text-base-content/55">
                   Refine os registros por período, operação ou tabela.
                 </p>
               </div>
+
               <button
                 type="button"
                 className="btn btn-ghost btn-sm"
@@ -396,6 +356,7 @@ export default function HistoricoAuditoria() {
                 <span className="label-text mb-1.5 text-xs font-bold">
                   Data inicial
                 </span>
+
                 <input
                   type="date"
                   className="input input-bordered w-full"
@@ -411,6 +372,7 @@ export default function HistoricoAuditoria() {
                 <span className="label-text mb-1.5 text-xs font-bold">
                   Data final
                 </span>
+
                 <input
                   type="date"
                   className="input input-bordered w-full"
@@ -426,6 +388,7 @@ export default function HistoricoAuditoria() {
                 <span className="label-text mb-1.5 text-xs font-bold">
                   Operação
                 </span>
+
                 <select
                   className="select select-bordered w-full"
                   value={filtros.operacao}
@@ -434,6 +397,7 @@ export default function HistoricoAuditoria() {
                   }
                 >
                   <option value="">Todas as operações</option>
+
                   {operacoes.map((operacao) => (
                     <option key={operacao} value={operacao}>
                       {operacao}
@@ -446,6 +410,7 @@ export default function HistoricoAuditoria() {
                 <span className="label-text mb-1.5 text-xs font-bold">
                   Tabela afetada
                 </span>
+
                 <select
                   className="select select-bordered w-full"
                   value={filtros.tabela}
@@ -454,6 +419,7 @@ export default function HistoricoAuditoria() {
                   }
                 >
                   <option value="">Todas as tabelas</option>
+
                   {tabelas.map((tabela) => (
                     <option key={tabela} value={tabela}>
                       {tabela}
@@ -468,27 +434,63 @@ export default function HistoricoAuditoria() {
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-base-300 px-5 py-4">
               <div>
                 <h2 className="font-bold text-base-content">Registros</h2>
+
                 <p className="text-xs text-base-content/55">
-                  {registrosFiltrados.length}{" "}
-                  {registrosFiltrados.length === 1
+                  {totalRegistros}{" "}
+                  {totalRegistros === 1
                     ? "registro encontrado"
                     : "registros encontrados"}
                 </p>
               </div>
+
               <span className="text-xs text-base-content/55">
                 Página {pagina} de {totalPaginas}
               </span>
             </div>
 
-            {registrosPagina.length === 0 ? (
+            {erro ? (
+              <div role="alert" className="p-8 text-center">
+                <i
+                  className="fa-solid fa-triangle-exclamation mb-3 text-2xl text-error"
+                  aria-hidden="true"
+                />
+
+                <p className="font-semibold text-base-content">
+                  Erro ao carregar auditoria
+                </p>
+
+                <p className="mt-1 text-sm text-base-content/60">{erro}</p>
+
+                <button
+                  type="button"
+                  className="btn btn-primary btn-sm mt-4"
+                  onClick={atualizarRegistros}
+                >
+                  Tentar novamente
+                </button>
+              </div>
+            ) : carregando ? (
+              <div
+                className="flex flex-col items-center justify-center gap-3 p-10"
+                role="status"
+              >
+                <span className="loading loading-spinner loading-lg text-primary" />
+
+                <p className="text-sm text-base-content/60">
+                  Carregando registros de auditoria...
+                </p>
+              </div>
+            ) : registrosPagina.length === 0 ? (
               <div className="p-8 text-center">
                 <i
                   className="fa-solid fa-magnifying-glass mb-3 text-2xl text-base-content/35"
                   aria-hidden="true"
                 />
+
                 <p className="font-semibold text-base-content">
                   Nenhum registro encontrado
                 </p>
+
                 <p className="mt-1 text-sm text-base-content/60">
                   Tente ajustar ou limpar os filtros.
                 </p>
@@ -506,33 +508,44 @@ export default function HistoricoAuditoria() {
                       <th className="text-right">Detalhes</th>
                     </tr>
                   </thead>
+
                   <tbody>
                     {registrosPagina.map((registro) => (
                       <tr key={registro.id} className="hover">
                         <td className="whitespace-nowrap text-sm">
                           {formatarDataHora(registro.dataHora)}
                         </td>
+
                         <td>
                           <span
-                            className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-bold ${classeOperacao[registro.operacao]}`}
+                            className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-bold ${
+                              classeOperacao[registro.operacao] ?? ""
+                            }`}
                           >
                             {registro.operacao}
                           </span>
                         </td>
+
                         <td>
                           <code className="rounded bg-base-200 px-2 py-1 text-xs">
                             {registro.tabela}
                           </code>
                         </td>
+
                         <td className="font-mono text-sm">
                           #{registro.registroId}
                         </td>
+
                         <td>
-                          <p className="font-semibold">{registro.ator.nome}</p>
+                          <p className="font-semibold">
+                            {registro.ator?.nome ?? "Não identificado"}
+                          </p>
+
                           <p className="text-xs text-base-content/55">
-                            {registro.ator.perfil}
+                            {registro.ator?.perfil ?? "Perfil não disponível"}
                           </p>
                         </td>
+
                         <td className="text-right">
                           <button
                             type="button"
@@ -540,10 +553,7 @@ export default function HistoricoAuditoria() {
                             onClick={() => setRegistroSelecionado(registro)}
                             aria-label={`Ver detalhes do registro ${registro.id}`}
                           >
-                            <i
-                              className="fa-solid fa-eye"
-                              aria-hidden="true"
-                            />
+                            <i className="fa-solid fa-eye" aria-hidden="true" />
                             Visualizar
                           </button>
                         </td>
@@ -556,27 +566,29 @@ export default function HistoricoAuditoria() {
 
             <footer className="flex flex-col gap-3 border-t border-base-300 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-xs text-base-content/55">
-                Exibindo {registrosPagina.length} de {registrosFiltrados.length}{" "}
-                registros filtrados
+                Exibindo {registrosPagina.length} de {totalRegistros} registros
+                filtrados
               </p>
+
               <div className="join self-end sm:self-auto">
                 <button
                   type="button"
                   className="btn btn-sm join-item"
                   onClick={() => setPagina((atual) => Math.max(1, atual - 1))}
-                  disabled={pagina <= 1}
+                  disabled={carregando || pagina <= 1}
                   aria-label="Página anterior"
                 >
                   <i className="fa-solid fa-chevron-left" aria-hidden="true" />
                   Anterior
                 </button>
+
                 <button
                   type="button"
                   className="btn btn-sm join-item"
                   onClick={() =>
                     setPagina((atual) => Math.min(totalPaginas, atual + 1))
                   }
-                  disabled={pagina >= totalPaginas}
+                  disabled={carregando || pagina >= totalPaginas}
                   aria-label="Próxima página"
                 >
                   Próxima
@@ -610,6 +622,7 @@ export default function HistoricoAuditoria() {
                 <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">
                   Registro #{registroSelecionado.id}
                 </p>
+
                 <h2
                   id="detalhes-auditoria-titulo"
                   className="mt-1 text-xl font-black text-base-content sm:text-2xl"
@@ -617,6 +630,7 @@ export default function HistoricoAuditoria() {
                   Detalhes da operação
                 </h2>
               </div>
+
               <button
                 type="button"
                 className="btn btn-ghost btn-sm btn-square"
@@ -633,47 +647,60 @@ export default function HistoricoAuditoria() {
                   <dt className="text-xs font-bold uppercase text-base-content/50">
                     Data e hora
                   </dt>
+
                   <dd className="mt-1 text-sm font-semibold">
                     {formatarDataHora(registroSelecionado.dataHora)}
                   </dd>
                 </div>
+
                 <div>
                   <dt className="text-xs font-bold uppercase text-base-content/50">
                     Operação
                   </dt>
+
                   <dd className="mt-1">
                     <span
-                      className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-bold ${classeOperacao[registroSelecionado.operacao]}`}
+                      className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-bold ${
+                        classeOperacao[registroSelecionado.operacao] ?? ""
+                      }`}
                     >
                       {registroSelecionado.operacao}
                     </span>
                   </dd>
                 </div>
+
                 <div>
                   <dt className="text-xs font-bold uppercase text-base-content/50">
                     Tabela e ID afetados
                   </dt>
+
                   <dd className="mt-1 text-sm font-semibold">
                     {registroSelecionado.tabela} #
                     {registroSelecionado.registroId}
                   </dd>
                 </div>
+
                 <div>
                   <dt className="text-xs font-bold uppercase text-base-content/50">
                     Responsável
                   </dt>
+
                   <dd className="mt-1 text-sm font-semibold">
-                    {registroSelecionado.ator.nome}
+                    {registroSelecionado.ator?.nome ?? "Não identificado"}
                   </dd>
+
                   <dd className="text-xs text-base-content/60">
-                    {registroSelecionado.ator.perfil} · ID{" "}
-                    {registroSelecionado.ator.id}
+                    {registroSelecionado.ator?.perfil ??
+                      "Perfil não disponível"}{" "}
+                    · ID {registroSelecionado.ator?.id ?? "Não informado"}
                   </dd>
                 </div>
+
                 <div className="sm:col-span-2 lg:col-span-4">
                   <dt className="text-xs font-bold uppercase text-base-content/50">
                     Ação
                   </dt>
+
                   <dd className="mt-1 text-sm text-base-content">
                     {registroSelecionado.acao}
                   </dd>
@@ -684,12 +711,13 @@ export default function HistoricoAuditoria() {
                 <SecaoDados
                   titulo="Dados anteriores"
                   dados={registroSelecionado.dadosAnteriores}
-                  semDados="Não havia dados anteriores (registro inserido)."
+                  semDados="Não há dados anteriores registrados para este evento."
                 />
+
                 <SecaoDados
                   titulo="Dados novos"
                   dados={registroSelecionado.dadosNovos}
-                  semDados="Não há novos dados (registro removido)."
+                  semDados="Não há novos dados registrados para este evento."
                 />
               </div>
             </div>

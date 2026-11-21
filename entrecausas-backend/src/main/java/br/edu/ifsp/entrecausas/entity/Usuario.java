@@ -90,6 +90,13 @@ public class Usuario {
     )
     private String fotoAlt;
 
+    // Indica se a conta está ativa no sistema.
+    @Column(
+        name = "ativo",
+        nullable = false
+    )
+    private boolean ativo = true;
+
     // Função/perfil de acesso do usuário.
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(
@@ -207,6 +214,14 @@ public class Usuario {
 
     public void setFotoAlt(String fotoAlt) {
         this.fotoAlt = fotoAlt;
+    }
+
+    public boolean isAtivo() {
+        return ativo;
+    }
+
+    public void setAtivo(boolean ativo) {
+        this.ativo = ativo;
     }
 
     public Funcao getFuncao() {

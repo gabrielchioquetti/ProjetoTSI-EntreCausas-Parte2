@@ -29,21 +29,13 @@ export default function RotaProtegida({
   children,
   funcoesPermitidas,
   allowedRoles,
-  allowPreview = false,
 }) {
   const { usuario, carregando } = useAuth();
   const location = useLocation();
 
-  const isPreview = new URLSearchParams(location.search).get("preview") === "1";
-
   // Aguarda a consulta da sessão antes de decidir o acesso.
   if (carregando) {
     return null;
-  }
-
-  // Permite visualização de páginas configuradas para preview.
-  if (allowPreview && isPreview) {
-    return children;
   }
 
   // Redireciona para o login quando não existe sessão.

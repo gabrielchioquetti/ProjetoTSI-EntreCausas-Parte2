@@ -1,4 +1,3 @@
-
 package br.edu.ifsp.entrecausas.service;
 
 import org.slf4j.Logger;
@@ -17,7 +16,8 @@ public class EmailService {
     private final JavaMailSender mailSender;
     private final String emailRemetente;
 
-    public EmailService(JavaMailSender mailSender, @Value("${spring.mail.username}") String emailRemetente) {
+    public EmailService(JavaMailSender mailSender,
+                        @Value("${spring.mail.username}") String emailRemetente) {
         this.mailSender = mailSender;
         this.emailRemetente = emailRemetente;
     }
@@ -72,7 +72,11 @@ public class EmailService {
     }
 
     // Confirma o recebimento de uma solicitação de ONG.
-    public boolean enviarConfirmacaoSolicitacao(String nomeUsuario, String emailUsuario, String nomeOng, String tipoSolicitacao) {
+    public boolean enviarConfirmacaoSolicitacao(
+            String nomeUsuario,
+            String emailUsuario,
+            String nomeOng,
+            String tipoSolicitacao) {
 
         String assunto = "Solicitação recebida - EntreCausas";
 
@@ -101,7 +105,10 @@ public class EmailService {
     }
 
     // Notifica um administrador sobre uma nova solicitação.
-    public boolean enviarNovaSolicitacaoAdministrador(String emailAdministrador, String nomeOng, String tipoSolicitacao) {
+    public boolean enviarNovaSolicitacaoAdministrador(
+            String emailAdministrador,
+            String nomeOng,
+            String tipoSolicitacao) {
 
         String assunto = "Nova solicitação pendente - EntreCausas";
 
@@ -128,7 +135,11 @@ public class EmailService {
     }
 
     // Informa a aprovação de uma solicitação.
-    public boolean enviarAprovacao(String nomeUsuario, String emailUsuario, String nomeOng, String tipoSolicitacao) {
+    public boolean enviarAprovacao(
+            String nomeUsuario,
+            String emailUsuario,
+            String nomeOng,
+            String tipoSolicitacao) {
 
         String assunto = "Solicitação aprovada - EntreCausas";
 
@@ -154,7 +165,12 @@ public class EmailService {
     }
 
     // Informa a rejeição e sua justificativa.
-    public boolean enviarRejeicao(String nomeUsuario, String emailUsuario, String nomeOng, String tipoSolicitacao, String motivoRejeicao) {
+    public boolean enviarRejeicao(
+            String nomeUsuario,
+            String emailUsuario,
+            String nomeOng,
+            String tipoSolicitacao,
+            String motivoRejeicao) {
 
         String assunto = "Solicitação rejeitada - EntreCausas";
 
@@ -210,6 +226,105 @@ public class EmailService {
                 Atenciosamente,
                 Equipe EntreCausas
                 """.formatted(nomeUsuario, codigo);
+
+        return enviarEmail(emailUsuario, assunto, mensagem);
+    }
+
+    // Confirma a desativação e anonimização da conta.
+    public boolean enviarConfirmacaoExclusaoConta(
+            String nomeUsuario,
+            String emailUsuario
+    ) {
+        String assunto = "Conta excluída - EntreCausas";
+
+        String mensagem = """
+                Olá, %s!
+
+                Confirmamos que sua conta no EntreCausas
+                foi desativada conforme sua solicitação.
+
+                O acesso à conta foi encerrado e os dados
+                pessoais vinculados ao seu cadastro foram
+                anonimizados no sistema.
+
+                Agradecemos por ter participado
+                da comunidade EntreCausas.
+
+                Atenciosamente,
+                Equipe EntreCausas
+                """.formatted(nomeUsuario);
+
+        return enviarEmail(emailUsuario, assunto, mensagem);
+    }
+
+    // Notifica a promoção de usuário para administrador.
+    public boolean enviarPromocaoAdministrador(
+            String nomeUsuario,
+            String emailUsuario
+    ) {
+        String assunto = "Promoção para administrador - EntreCausas";
+
+        String mensagem = """
+                Olá, %s!
+
+                Informamos que sua conta no EntreCausas
+                foi promovida pelo MASTER.
+
+                Função anterior: USUARIO
+                Nova função: ADMINISTRADOR
+
+                Agora você possui acesso às funcionalidades
+                administrativas autorizadas para sua função.
+
+                Por segurança, suas sessões anteriores
+                foram encerradas.
+
+                Entre novamente no EntreCausas para
+                utilizar suas novas permissões.
+
+                Caso não reconheça essa alteração,
+                entre em contato com nossa equipe.
+
+                Atenciosamente,
+                Equipe EntreCausas
+                """.formatted(nomeUsuario);
+
+        return enviarEmail(emailUsuario, assunto, mensagem);
+    }
+
+    // Notifica o rebaixamento de administrador para usuário.
+    public boolean enviarRebaixamentoUsuario(
+            String nomeUsuario,
+            String emailUsuario
+    ) {
+        String assunto = "Alteração de função - EntreCausas";
+
+        String mensagem = """
+                Olá, %s!
+
+                Informamos que a função da sua conta
+                no EntreCausas foi alterada pelo MASTER.
+
+                Função anterior: ADMINISTRADOR
+                Nova função: USUARIO
+
+                Suas permissões administrativas foram removidas.
+
+                Você poderá continuar utilizando as
+                funcionalidades disponíveis para usuários comuns.
+
+                Por segurança, suas sessões anteriores
+                foram encerradas.
+
+                Entre novamente no EntreCausas para
+                continuar utilizando sua conta.
+
+                Caso não reconheça essa alteração,
+                entre em contato com nossa equipe.
+
+                Atenciosamente,
+                Equipe EntreCausas
+                """.formatted(nomeUsuario);
 
         return enviarEmail(emailUsuario, assunto, mensagem);
     }

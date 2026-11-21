@@ -5,6 +5,7 @@ import Footer from "../../components/Footer/Footer.jsx";
 import {
   listarUsuarios,
   promoverUsuario,
+  rebaixarUsuario,
 } from "../../services/UsuarioService.js";
 
 function nomeFuncao(funcao) {
@@ -27,10 +28,24 @@ function classePerfil(funcao) {
       return "border-primary/30 bg-primary/10 text-primary";
 
     case "ADMINISTRADOR":
+    case "ADM":
       return "border-secondary/40 bg-secondary/15 text-base-content";
 
     default:
       return "border-base-300 bg-base-200 text-base-content/70";
+  }
+}
+
+function obterOperacao(funcao) {
+  switch (funcao?.toUpperCase()) {
+    case "USUARIO":
+      return "promover";
+
+    case "ADMINISTRADOR":
+      return "rebaixar";
+
+    default:
+      return null;
   }
 }
 
@@ -39,9 +54,13 @@ export default function ListaUsuarios() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
   const [usuarioSelecionado, setUsuarioSelecionado] = useState(null);
-  const [promovendo, setPromovendo] = useState(false);
-  const [erroPromocao, setErroPromocao] = useState("");
+  const [processando, setProcessando] = useState(false);
+  const [erroAlteracao, setErroAlteracao] = useState("");
   const [notificacao, setNotificacao] = useState("");
+
+  const operacaoSelecionada = obterOperacao(usuarioSelecionado?.funcaoNome);
+
+  const promovendo = operacaoSelecionada === "promover";
 
   useEffect(() => {
     let ativo = true;
@@ -75,61 +94,66 @@ export default function ListaUsuarios() {
   }, []);
 
   function abrirAlteracaoPerfil(usuario) {
-    if (usuario.funcaoNome?.toUpperCase() !== "USUARIO") {
+    if (!obterOperacao(usuario.funcaoNome)) {
       return;
     }
 
     setUsuarioSelecionado(usuario);
-    setErroPromocao("");
+    setErroAlteracao("");
     setNotificacao("");
   }
 
   function fecharAlteracaoPerfil() {
-    if (promovendo) {
+    if (processando) {
       return;
     }
 
     setUsuarioSelecionado(null);
-    setErroPromocao("");
+    setErroAlteracao("");
   }
 
   async function confirmarAlteracao(event) {
     event.preventDefault();
 
-    if (!usuarioSelecionado || promovendo) {
+    if (!usuarioSelecionado || processando || !operacaoSelecionada) {
       return;
     }
 
-    if (usuarioSelecionado.funcaoNome?.toUpperCase() !== "USUARIO") {
-      return;
-    }
+    const usuarioOriginal = usuarioSelecionado;
 
-    setPromovendo(true);
-    setErroPromocao("");
+    setProcessando(true);
+    setErroAlteracao("");
 
     try {
-      const usuarioAtualizado = await promoverUsuario(
-        usuarioSelecionado.idUsuario,
-      );
+      const usuarioAtualizado = promovendo
+        ? await promoverUsuario(usuarioOriginal.idUsuario)
+        : await rebaixarUsuario(usuarioOriginal.idUsuario);
 
       // Atualiza a tabela com o retorno da API.
       setUsuarios((atuais) =>
         atuais.map((usuario) =>
-          usuario.idUsuario === usuarioSelecionado.idUsuario
+          usuario.idUsuario === usuarioOriginal.idUsuario
             ? usuarioAtualizado
             : usuario,
         ),
       );
 
       setNotificacao(
-        `${usuarioSelecionado.nome} foi promovido a administrador com sucesso.`,
+        promovendo
+          ? `${usuarioOriginal.nome} foi promovido a administrador com sucesso.`
+          : `${usuarioOriginal.nome} foi rebaixado a usuário comum com sucesso.`,
       );
 
       setUsuarioSelecionado(null);
     } catch (error) {
-      setErroPromocao(error.message || "Não foi possível promover o usuário.");
+      setErroAlteracao(
+        error.message ||
+          (promovendo
+            ? "Não foi possível promover o usuário."
+            : "Não foi possível rebaixar o administrador."),
+      );
     } finally {
-      setPromovendo(false);
+      setProcessando(false);
     }
   }
 
@@ -158,8 +182,8 @@ export default function ListaUsuarios() {
             </h1>
 
             <p className="mt-2 max-w-3xl text-sm leading-6 text-white/75 sm:text-base">
-              Consulte os perfis cadastrados e promova usuários comuns a
-              administradores.
+              Consulte os perfis cadastrados, promova usuários comuns a
+              administradores ou rebaixe administradores a usuários comuns.
             </p>
           </header>
 
@@ -196,8 +220,8 @@ export default function ListaUsuarios() {
               </h2>
 
               <p className="mt-1 text-xs text-base-content/55">
-                Somente o MASTER pode promover usuários comuns a
-                administradores.
+                Somente o MASTER pode promover usuários comuns a administradores
+                ou rebaixar administradores a usuários comuns.
               </p>
             </div>
 
@@ -253,13 +277,26 @@ export default function ListaUsuarios() {
                               />
                               Promover a administrador
                             </button>
+                          ) : usuario.funcaoNome?.toUpperCase() ===
+                            "ADMINISTRADOR" ? (
+                            <button
+                              type="button"
+                              onClick={() => abrirAlteracaoPerfil(usuario)}
+                              className="btn btn-sm rounded-lg border-base-300 bg-base-100"
+                            >
+                              <i
+                                className="fa-solid fa-user-minus"
+                                aria-hidden="true"
+                              />
+                              Rebaixar a usuário
+                            </button>
                           ) : usuario.funcaoNome?.toUpperCase() === "MASTER" ? (
                             <span className="text-xs font-semibold text-primary">
                               Perfil Master
                             </span>
                           ) : (
                             <span className="text-xs text-base-content/50">
-                              Administrador
+                              Perfil indisponível
                             </span>
                           )}
                         </td>
@@ -308,20 +345,30 @@ export default function ListaUsuarios() {
                     id="alterar-perfil-titulo"
                     className="text-3xl font-black leading-tight tracking-tight text-base-content sm:text-4xl"
                   >
-                    Promover usuário
+                    {promovendo ? "Promover usuário" : "Rebaixar administrador"}
                   </h2>
 
                   <p className="mt-3 max-w-lg text-sm leading-6 text-base-content/65 sm:text-base">
-                    Confirme a promoção de{" "}
-                    <strong>{usuarioSelecionado.nome}</strong> para o perfil de
-                    administrador.
+                    {promovendo ? (
+                      <>
+                        Confirme a promoção de{" "}
+                        <strong>{usuarioSelecionado.nome}</strong> para o perfil
+                        de administrador.
+                      </>
+                    ) : (
+                      <>
+                        Confirme o rebaixamento de{" "}
+                        <strong>{usuarioSelecionado.nome}</strong> para o perfil
+                        de usuário comum.
+                      </>
+                    )}
                   </p>
                 </div>
 
                 <button
                   type="button"
                   onClick={fecharAlteracaoPerfil}
-                  disabled={promovendo}
+                  disabled={processando}
                   aria-label="Fechar alteração de perfil"
                   title="Fechar"
                   className="btn btn-ghost btn-sm btn-square shrink-0"
@@ -366,10 +413,14 @@ export default function ListaUsuarios() {
                   <select
                     id="novo-perfil"
                     className="select select-bordered h-12 w-full rounded-xl border-base-300 bg-base-100 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                    value="ADMINISTRADOR"
+                    value={promovendo ? "ADMINISTRADOR" : "USUARIO"}
                     disabled
                   >
-                    <option value="ADMINISTRADOR">Administrador</option>
+                    {promovendo ? (
+                      <option value="ADMINISTRADOR">Administrador</option>
+                    ) : (
+                      <option value="USUARIO">Usuário</option>
+                    )}
                   </select>
                 </div>
               </div>
@@ -384,12 +435,16 @@ export default function ListaUsuarios() {
                 />
 
                 <span>
-                  Esta ação concederá permissões administrativas ao usuário. A
-                  alteração será salva no banco de dados.
+                  {promovendo
+                    ? "Esta ação concederá permissões administrativas ao usuário."
+                    : "Esta ação removerá as permissões administrativas do usuário."}{" "}
+                  A alteração será salva no banco de dados. As sessões
+                  existentes serão encerradas, e o usuário precisará entrar
+                  novamente para receber as novas permissões.
                 </span>
               </div>
 
-              {erroPromocao && (
+              {erroAlteracao && (
                 <div
                   role="alert"
                   className="alert mt-4 border border-error/30 bg-base-100 text-sm text-error"
@@ -398,7 +453,8 @@ export default function ListaUsuarios() {
                     className="fa-solid fa-circle-exclamation"
                     aria-hidden="true"
                   />
-                  <span>{erroPromocao}</span>
+
+                  <span>{erroAlteracao}</span>
                 </div>
               )}
 
@@ -406,7 +462,7 @@ export default function ListaUsuarios() {
                 <button
                   type="button"
                   onClick={fecharAlteracaoPerfil}
-                  disabled={promovendo}
+                  disabled={processando}
                   className="btn btn-ghost rounded-xl"
                 >
                   Cancelar
@@ -415,17 +471,19 @@ export default function ListaUsuarios() {
                 <button
                   type="submit"
                   className="btn btn-primary rounded-xl"
-                  disabled={promovendo}
+                  disabled={processando}
                 >
-                  {promovendo ? (
+                  {processando ? (
                     <>
                       <span className="loading loading-spinner loading-sm" />
-                      Promovendo...
+                      {promovendo ? "Promovendo..." : "Rebaixando..."}
                     </>
                   ) : (
                     <>
                       <i className="fa-solid fa-check" aria-hidden="true" />
-                      Confirmar promoção
+                      {promovendo
+                        ? "Confirmar promoção"
+                        : "Confirmar rebaixamento"}
                     </>
                   )}
                 </button>

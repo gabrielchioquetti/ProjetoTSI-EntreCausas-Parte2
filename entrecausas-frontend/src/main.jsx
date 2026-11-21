@@ -20,6 +20,10 @@ import EditarOng from "./pages/EditarOng/EditarOng";
 import EditarUsuario from "./pages/EditarUsuario/EditarUsuario";
 import AlterarSenha from "./pages/AlterarSenha/AlterarSenha";
 import SolicitacaoExclusaoOng from "./pages/SolicitacaoExclusaoOng/SolicitacaoExclusaoOng";
+import ExcluirConta from "./pages/ExcluirConta/ExcluirConta";
+
+// Notificação global para sessões encerradas.
+import NotificacaoSessao from "./components/Notificacao/NotificacaoSessao.jsx";
 
 import {
   AdminSolicitacoesLayout,
@@ -34,6 +38,9 @@ createRoot(document.getElementById("root")).render(
   <StrictMode>
     <BrowserRouter>
       <AuthProvider>
+        {/* Exibe notificações de sessão em qualquer página. */}
+        <NotificacaoSessao />
+
         <Routes>
           <Route element={<AppLayout />}>
             {/* Páginas públicas */}
@@ -104,6 +111,16 @@ createRoot(document.getElementById("root")).render(
               }
             />
 
+            {/* Exclusão de conta: USUARIO e ADMINISTRADOR */}
+            <Route
+              path="/excluir-conta"
+              element={
+                <RotaProtegida allowedRoles={["USUARIO", "ADMINISTRADOR"]}>
+                  <ExcluirConta />
+                </RotaProtegida>
+              }
+            />
+
             {/* Área administrativa: ADMINISTRADOR e MASTER */}
             <Route
               path="/admin/solicitacoes"
@@ -133,23 +150,17 @@ createRoot(document.getElementById("root")).render(
             <Route
               path="/admin/usuarios"
               element={
-                <RotaProtegida
-                  allowedRoles={["MASTER"]}
-                  allowPreview
-                >
+                <RotaProtegida allowedRoles={["MASTER"]}>
                   <ListaUsuarios />
                 </RotaProtegida>
               }
             />
 
-            {/* Histórico de auditoria demonstrativo, exclusivo do MASTER */}
+            {/* Histórico de auditoria: exclusivo do MASTER */}
             <Route
               path="/admin/historico"
               element={
-                <RotaProtegida
-                  allowedRoles={["MASTER"]}
-                  allowPreview
-                >
+                <RotaProtegida allowedRoles={["MASTER"]}>
                   <HistoricoAuditoria />
                 </RotaProtegida>
               }

@@ -44,7 +44,8 @@ public class UsuarioService {
     private static final String FUNCAO_ADMINISTRADOR = "ADMINISTRADOR";
     private static final String FUNCAO_MASTER = "MASTER";
 
-    private static final Logger logger = LoggerFactory.getLogger(UsuarioService.class);
+    private static final Logger logger =
+            LoggerFactory.getLogger(UsuarioService.class);
 
     private final UsuarioRepository usuarioRepository;
     private final FuncaoRepository funcaoRepository;
@@ -56,7 +57,16 @@ public class UsuarioService {
     private final SessionRegistry sessionRegistry;
 
     // Injeta as dependências do serviço.
-    public UsuarioService(UsuarioRepository usuarioRepository, FuncaoRepository funcaoRepository, PasswordEncoder passwordEncoder, AesCryptoUtil aesCryptoUtil, HmacCryptoUtil hmacCryptoUtil, FileStorageService fileStorageService, EmailService emailService, SessionRegistry sessionRegistry) {
+    public UsuarioService(
+            UsuarioRepository usuarioRepository,
+            FuncaoRepository funcaoRepository,
+            PasswordEncoder passwordEncoder,
+            AesCryptoUtil aesCryptoUtil,
+            HmacCryptoUtil hmacCryptoUtil,
+            FileStorageService fileStorageService,
+            EmailService emailService,
+            SessionRegistry sessionRegistry) {
+
         this.usuarioRepository = usuarioRepository;
         this.funcaoRepository = funcaoRepository;
         this.passwordEncoder = passwordEncoder;
@@ -69,14 +79,18 @@ public class UsuarioService {
 
     // Cadastra um novo usuário.
     @Transactional
-    public UsuarioResponseDTO cadastrar(UsuarioRequestDTO dto, MultipartFile foto) {
+    public UsuarioResponseDTO cadastrar(
+            UsuarioRequestDTO dto,
+            MultipartFile foto) {
 
         String cpf = normalizarDigitos(dto.cpf());
         String telefone = normalizarDigitos(dto.telefone());
 
         // Verifica se o e-mail já existe.
         if (usuarioRepository.existsByEmail(dto.email())) {
-            throw new ConflitoException("E-mail já cadastrado no sistema.");
+            throw new ConflitoException(
+                    "E-mail já cadastrado no sistema."
+            );
         }
 
         String cpfHash = hmacCryptoUtil.gerarHash(cpf);
@@ -84,16 +98,25 @@ public class UsuarioService {
 
         // Verifica se o CPF já existe.
         if (usuarioRepository.existsByCpfHash(cpfHash)) {
-            throw new ConflitoException("CPF já cadastrado no sistema.");
+            throw new ConflitoException(
+                    "CPF já cadastrado no sistema."
+            );
         }
 
         // Verifica se o telefone já existe.
         if (usuarioRepository.existsByTelefoneHash(telefoneHash)) {
-            throw new ConflitoException("Telefone já cadastrado no sistema.");
+            throw new ConflitoException(
+                    "Telefone já cadastrado no sistema."
+            );
         }
 
         // Busca a função padrão.
-        Funcao funcao = funcaoRepository.findByNome(FUNCAO_USUARIO).orElseThrow(() -> new IllegalStateException("A função USUARIO não foi encontrada."));
+        Funcao funcao = funcaoRepository
+                .findByNome(FUNCAO_USUARIO)
+                .orElseThrow(() -> new IllegalStateException(
+                        "A função USUARIO não foi encontrada."
+                ));
+
         Usuario usuario = new Usuario();
 
         usuario.setNome(dto.nome());
@@ -123,7 +146,6 @@ public class UsuarioService {
         }
 
         try {
-
             Usuario usuarioSalvo = usuarioRepository.save(usuario);
 
             // Prepara os dados para o e-mail de boas-vindas.
@@ -133,20 +155,25 @@ public class UsuarioService {
 
             // Envia o e-mail somente após confirmar a transação.
             TransactionSynchronizationManager.registerSynchronization(
-                new TransactionSynchronization() {
+                    new TransactionSynchronization() {
 
-                    @Override
-                    public void afterCommit() {
-
-                        try {
-                            emailService.enviarBoasVindas(nomeUsuario, emailUsuario);
-                        } catch (RuntimeException erro) {
-
-                            // Uma falha no e-mail não desfaz o cadastro.
-                            logger.error("Falha ao enviar boas-vindas para o usuário {}.", idUsuario, erro);
+                        @Override
+                        public void afterCommit() {
+                            try {
+                                emailService.enviarBoasVindas(
+                                        nomeUsuario,
+                                        emailUsuario
+                                );
+                            } catch (RuntimeException erro) {
+                                // Uma falha no e-mail não desfaz o cadastro.
+                                logger.error(
+                                        "Falha ao enviar boas-vindas para o usuário {}.",
+                                        idUsuario,
+                                        erro
+                                );
+                            }
                         }
                     }
-                }
             );
 
             return converterParaDTO(usuarioSalvo);
@@ -169,7 +196,10 @@ public class UsuarioService {
 
         validarMaster();
 
-        return usuarioRepository.findAll().stream().map(this::converterParaDTO).collect(Collectors.toList());
+        return usuarioRepository.findAll()
+                .stream()
+                .map(this::converterParaDTO)
+                .collect(Collectors.toList());
     }
 
     // Busca o próprio usuário ou permite consulta pelo MASTER.
@@ -182,7 +212,7 @@ public class UsuarioService {
 
         return converterParaDTO(usuario);
     }
-    
+
     // Atualiza somente os dados informados do perfil.
     @Transactional
     public UsuarioResponseDTO atualizar(
@@ -267,7 +297,8 @@ public class UsuarioService {
                 // Verifica telefone usado por outro usuário.
                 if (usuarioRepository
                         .existsByTelefoneHashAndIdUsuarioNot(
-                                telefoneHash, id)) {
+                                telefoneHash,
+                                id)) {
 
                     throw new ConflitoException(
                             "Telefone já cadastrado por outro usuário."
@@ -311,7 +342,6 @@ public class UsuarioService {
         }
 
         try {
-
             Usuario usuarioAtualizado =
                     usuarioRepository.save(usuario);
 
@@ -320,23 +350,22 @@ public class UsuarioService {
                     usuarioAtualizado.getEmail())) {
 
                 // Executa somente após confirmar a transação.
-                TransactionSynchronizationManager
-                        .registerSynchronization(
-                            new TransactionSynchronization() {
+                TransactionSynchronizationManager.registerSynchronization(
+                        new TransactionSynchronization() {
 
-                                @Override
-                                public void afterCommit() {
+                            @Override
+                            public void afterCommit() {
 
-                                    for (SessionInformation sessao :
-                                            sessionRegistry.getAllSessions(
-                                                    emailAnterior,
-                                                    false)) {
+                                for (SessionInformation sessao :
+                                        sessionRegistry.getAllSessions(
+                                                emailAnterior,
+                                                false)) {
 
-                                        sessao.expireNow();
-                                    }
+                                    sessao.expireNow();
                                 }
                             }
-                        );
+                        }
+                );
             }
 
             // Remove a foto antiga somente depois
@@ -360,7 +389,7 @@ public class UsuarioService {
             throw e;
         }
     }
-    
+
     // Altera a senha do usuário.
     @Transactional
     public void alterarSenha(Long id, AlterarSenhaDTO dto) {
@@ -382,7 +411,6 @@ public class UsuarioService {
 
         // Confere a nova senha.
         if (!dto.novaSenha().equals(dto.confirmarSenha())) {
-
             throw new IllegalArgumentException(
                     "A confirmação da nova senha não confere."
             );
@@ -428,70 +456,381 @@ public class UsuarioService {
 
         // O MASTER não pode promover a própria conta.
         if (master.getIdUsuario().equals(usuario.getIdUsuario())) {
-            throw new ConflitoException("A conta MASTER não pode ser promovida.");
+            throw new ConflitoException(
+                    "A conta MASTER não pode ser promovida."
+            );
         }
 
         // Somente usuários comuns podem ser promovidos.
-        if (!FUNCAO_USUARIO.equalsIgnoreCase( usuario.getFuncao().getNome())) {
-            throw new ConflitoException("Somente usuários com função USUARIO " + "podem ser promovidos a ADMINISTRADOR.");
+        if (!FUNCAO_USUARIO.equalsIgnoreCase(
+                usuario.getFuncao().getNome())) {
+
+            throw new ConflitoException(
+                    "Somente usuários com função USUARIO podem ser promovidos a ADMINISTRADOR."
+            );
         }
 
-        Funcao funcaoAdministrador = funcaoRepository.findByNome(FUNCAO_ADMINISTRADOR).orElseThrow(() -> new IllegalStateException("A função ADMINISTRADOR não foi encontrada."));
+        Funcao funcaoAdministrador = funcaoRepository
+                .findByNome(FUNCAO_ADMINISTRADOR)
+                .orElseThrow(() -> new IllegalStateException(
+                        "A função ADMINISTRADOR não foi encontrada."
+                ));
 
         // Altera somente a função do usuário.
         usuario.setFuncao(funcaoAdministrador);
 
         Usuario usuarioAtualizado = usuarioRepository.save(usuario);
+
         Long idMaster = master.getIdUsuario();
         Long idPromovido = usuarioAtualizado.getIdUsuario();
+        String nomePromovido = usuarioAtualizado.getNome();
+        String emailPromovido = usuarioAtualizado.getEmail();
 
-        // Registra a operação no log após o commit.
+        // Expira as sessões e registra a operação após o commit.
         TransactionSynchronizationManager.registerSynchronization(
-            new TransactionSynchronization() {
+                new TransactionSynchronization() {
 
-                @Override
-                public void afterCommit() {
-                    logger.info("Usuário {} promovido de USUARIO para " + "ADMINISTRADOR pelo MASTER {}.", idPromovido, idMaster);
+                    @Override
+                    public void afterCommit() {
+
+                        try {
+                            expirarSessoesUsuario(emailPromovido);
+                        } catch (RuntimeException erro) {
+                            logger.error(
+                                    "Falha ao expirar sessões do usuário {}.",
+                                    idPromovido,
+                                    erro
+                            );
+                        }
+
+                        logger.info(
+                                "Usuário {} promovido de USUARIO para ADMINISTRADOR pelo MASTER {}.",
+                                idPromovido,
+                                idMaster
+                        );
+
+                        // Notifica o usuário após a promoção.
+                        try {
+                            boolean enviado =
+                                    emailService.enviarPromocaoAdministrador(
+                                            nomePromovido,
+                                            emailPromovido
+                                    );
+
+                            if (!enviado) {
+                                logger.warn(
+                                        "Não foi possível enviar o e-mail de promoção ao usuário {}.",
+                                        idPromovido
+                                );
+                            }
+                        } catch (RuntimeException erro) {
+                            logger.error(
+                                    "Falha ao notificar a promoção do usuário {}.",
+                                    idPromovido,
+                                    erro
+                            );
+                        }
+                    }
                 }
-            }
         );
 
         return converterParaDTO(usuarioAtualizado);
     }
 
-    // Remove um usuário.
+    // Rebaixa um administrador para usuário comum.
+    @PreAuthorize("hasRole('MASTER')")
     @Transactional
-    public void deletar(Long id) {
+    public UsuarioResponseDTO rebaixarParaUsuario(Long id) {
+
+        Usuario master = validarMaster();
+        Usuario usuario = buscarUsuario(id);
+
+        // O MASTER não pode rebaixar a própria conta.
+        if (master.getIdUsuario().equals(usuario.getIdUsuario())) {
+            throw new ConflitoException(
+                    "A conta MASTER não pode ser rebaixada."
+            );
+        }
+
+        // Somente administradores podem ser rebaixados.
+        if (!FUNCAO_ADMINISTRADOR.equalsIgnoreCase(
+                usuario.getFuncao().getNome())) {
+
+            throw new ConflitoException(
+                    "Somente usuários com função ADMINISTRADOR podem ser rebaixados a USUARIO."
+            );
+        }
+
+        Funcao funcaoUsuario = funcaoRepository
+                .findByNome(FUNCAO_USUARIO)
+                .orElseThrow(() -> new IllegalStateException(
+                        "A função USUARIO não foi encontrada."
+                ));
+
+        // Altera somente a função do usuário.
+        usuario.setFuncao(funcaoUsuario);
+
+        Usuario usuarioAtualizado = usuarioRepository.save(usuario);
+
+        Long idMaster = master.getIdUsuario();
+        Long idRebaixado = usuarioAtualizado.getIdUsuario();
+        String nomeRebaixado = usuarioAtualizado.getNome();
+        String emailRebaixado = usuarioAtualizado.getEmail();
+
+        // Expira as sessões e registra a operação após o commit.
+        TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+
+                    @Override
+                    public void afterCommit() {
+
+                        try {
+                            expirarSessoesUsuario(emailRebaixado);
+                        } catch (RuntimeException erro) {
+                            logger.error(
+                                    "Falha ao expirar sessões do usuário {}.",
+                                    idRebaixado,
+                                    erro
+                            );
+                        }
+
+                        logger.info(
+                                "Usuário {} rebaixado de ADMINISTRADOR para USUARIO pelo MASTER {}.",
+                                idRebaixado,
+                                idMaster
+                        );
+
+                        // Notifica o usuário após o rebaixamento.
+                        try {
+                            boolean enviado =
+                                    emailService.enviarRebaixamentoUsuario(
+                                            nomeRebaixado,
+                                            emailRebaixado
+                                    );
+
+                            if (!enviado) {
+                                logger.warn(
+                                        "Não foi possível enviar o e-mail de rebaixamento ao usuário {}.",
+                                        idRebaixado
+                                );
+                            }
+                        } catch (RuntimeException erro) {
+                            logger.error(
+                                    "Falha ao notificar o rebaixamento do usuário {}.",
+                                    idRebaixado,
+                                    erro
+                            );
+                        }
+                    }
+                }
+        );
+
+        return converterParaDTO(usuarioAtualizado);
+    }
+
+    // Desativa e anonimiza a própria conta.
+    @Transactional
+    public void deletar(Long id, String senhaAtual) {
 
         // Impede excluir outra conta.
         validarProprioUsuario(id);
 
         Usuario usuario = buscarUsuario(id);
 
-        // Impede a exclusão da única conta MASTER.
-        if (FUNCAO_MASTER.equalsIgnoreCase(usuario.getFuncao().getNome())) {
+        // Impede a exclusão da conta MASTER.
+        if (FUNCAO_MASTER.equalsIgnoreCase(
+                usuario.getFuncao().getNome())) {
 
-            throw new AccessDeniedException("A conta MASTER não pode ser excluída.");
+            throw new AccessDeniedException(
+                    "A conta MASTER não pode ser excluída."
+            );
         }
 
-        // Remove a foto antes do registro.
-        if (usuario.getFotoPerfil() != null && !usuario.getFotoPerfil().isBlank()) {
-            fileStorageService.deletarArquivo(usuario.getFotoPerfil());
+        // Impede repetir a exclusão.
+        if (!usuario.isAtivo()) {
+            throw new ConflitoException(
+                    "Esta conta já foi desativada."
+            );
         }
 
-        usuarioRepository.delete(usuario);
+        // Exige a confirmação da senha atual.
+        if (senhaAtual == null
+                || senhaAtual.isBlank()
+                || !passwordEncoder.matches(
+                    senhaAtual,
+                    usuario.getSenha())) {
+
+            throw new IllegalArgumentException(
+                    "A senha atual está incorreta."
+            );
+        }
+
+        // Preserva os dados necessários para a notificação.
+        String nomeAnterior = usuario.getNome();
+        String emailAnterior = usuario.getEmail();
+        String fotoAnterior = usuario.getFotoPerfil();
+
+        // Identificador aleatório para os dados anônimos.
+        String identificador =
+                java.util.UUID.randomUUID()
+                        .toString()
+                        .replace("-", "");
+
+        // Substitui os dados pessoais.
+        usuario.setNome("Conta excluída");
+
+        usuario.setEmail(
+                "excluido-" + identificador + "@anonimo.invalid"
+        );
+
+        // Substitui a senha por um hash aleatório.
+        usuario.setSenha(
+                passwordEncoder.encode(
+                        java.util.UUID.randomUUID().toString()
+                )
+        );
+
+        // Substitui os valores criptografados.
+        usuario.setCpf(
+                aesCryptoUtil.encrypt(identificador)
+        );
+
+        usuario.setTelefone(
+                aesCryptoUtil.encrypt(identificador)
+        );
+
+        // Mantém os hashes únicos sem reutilizar
+        // CPF ou telefone do usuário.
+        usuario.setCpfHash(
+                hmacCryptoUtil.gerarHash(
+                        "CPF-EXCLUIDO-" + identificador
+                )
+        );
+
+        usuario.setTelefoneHash(
+                hmacCryptoUtil.gerarHash(
+                        "TELEFONE-EXCLUIDO-" + identificador
+                )
+        );
+
+        // Remove referências à foto de perfil.
+        usuario.setFotoPerfil(null);
+        usuario.setFotoAlt(null);
+
+        // Bloqueia a utilização da conta.
+        usuario.setAtivo(false);
+
+        // Mantém o registro e seus relacionamentos.
+        usuarioRepository.saveAndFlush(usuario);
+
+        // Executa as ações externas após o commit.
+        TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+
+                    @Override
+                    public void afterCommit() {
+
+                        // Expira as sessões registradas.
+                        try {
+                            expirarSessoesUsuario(emailAnterior);
+                        } catch (RuntimeException erro) {
+                            logger.error(
+                                    "Falha ao expirar sessões da conta {}.",
+                                    id,
+                                    erro
+                            );
+                        }
+
+                        // Remove a foto somente após o commit.
+                        if (fotoAnterior != null
+                                && !fotoAnterior.isBlank()) {
+
+                            try {
+                                fileStorageService.deletarArquivo(
+                                        fotoAnterior
+                                );
+                            } catch (RuntimeException erro) {
+                                logger.error(
+                                        "Falha ao remover a foto da conta {}.",
+                                        id,
+                                        erro
+                                );
+                            }
+                        }
+
+                        logger.info(
+                                "Conta {} desativada e anonimizada.",
+                                id
+                        );
+
+                        // Envia a confirmação ao e-mail original.
+                        try {
+                            boolean enviado =
+                                    emailService.enviarConfirmacaoExclusaoConta(
+                                            nomeAnterior,
+                                            emailAnterior
+                                    );
+
+                            if (!enviado) {
+                                logger.warn(
+                                        "Não foi possível enviar a confirmação de exclusão da conta {}.",
+                                        id
+                                );
+                            }
+                        } catch (RuntimeException erro) {
+                            logger.error(
+                                    "Falha ao notificar a exclusão da conta {}.",
+                                    id,
+                                    erro
+                            );
+                        }
+                    }
+                }
+        );
+    }
+
+    // Expira as sessões após uma alteração de função.
+    private void expirarSessoesUsuario(String email) {
+
+        List<SessionInformation> sessoes =
+                sessionRegistry.getAllSessions(email, false);
+
+        for (SessionInformation sessao : sessoes) {
+            sessao.expireNow();
+        }
     }
 
     // Retorna o usuário autenticado ou bloqueia o acesso.
     private Usuario obterUsuarioAutenticado() {
 
-        Authentication autenticacao = SecurityContextHolder.getContext().getAuthentication();
+        Authentication autenticacao =
+                SecurityContextHolder.getContext()
+                        .getAuthentication();
 
-        if (autenticacao == null || !autenticacao.isAuthenticated() || "anonymousUser".equals(autenticacao.getPrincipal())) {
-            throw new AccessDeniedException("É necessário entrar na conta.");
+        if (autenticacao == null
+                || !autenticacao.isAuthenticated()
+                || "anonymousUser".equals(
+                        autenticacao.getPrincipal())) {
+
+            throw new AccessDeniedException(
+                    "É necessário entrar na conta."
+            );
         }
 
-        return usuarioRepository.findByEmail(autenticacao.getName()).orElseThrow(() -> new AccessDeniedException("A sessão não possui um usuário válido."));
+        Usuario usuario = usuarioRepository
+                .findByEmail(autenticacao.getName())
+                .orElseThrow(() -> new AccessDeniedException(
+                        "A sessão não possui um usuário válido."
+                ));
+
+        // Impede operações com contas desativadas.
+        if (!usuario.isAtivo()) {
+            throw new AccessDeniedException(
+                    "Esta conta está desativada."
+            );
+        }
+
+        return usuario;
     }
 
     // Confirma que a conta pertence ao usuário autenticado.
@@ -500,7 +839,9 @@ public class UsuarioService {
         Usuario usuarioAutenticado = obterUsuarioAutenticado();
 
         if (!usuarioAutenticado.getIdUsuario().equals(id)) {
-            throw new AccessDeniedException("Você não tem permissão para alterar esta conta.");
+            throw new AccessDeniedException(
+                    "Você não tem permissão para alterar esta conta."
+            );
         }
     }
 
@@ -508,24 +849,44 @@ public class UsuarioService {
     private void validarProprioUsuarioOuMaster(Long id) {
 
         Usuario usuarioAutenticado = obterUsuarioAutenticado();
-        boolean proprioUsuario = usuarioAutenticado.getIdUsuario().equals(id);
-        boolean master = FUNCAO_MASTER.equalsIgnoreCase(usuarioAutenticado.getFuncao().getNome());
+
+        boolean proprioUsuario =
+                usuarioAutenticado.getIdUsuario().equals(id);
+
+        boolean master = FUNCAO_MASTER.equalsIgnoreCase(
+                usuarioAutenticado.getFuncao().getNome()
+        );
 
         if (!proprioUsuario && !master) {
-            throw new AccessDeniedException("Você não tem permissão para consultar esta conta.");
+            throw new AccessDeniedException(
+                    "Você não tem permissão para consultar esta conta."
+            );
         }
     }
 
     // Confirma a função MASTER no banco e na sessão.
     private Usuario validarMaster() {
 
-        Authentication autenticacao = SecurityContextHolder.getContext().getAuthentication();
+        Authentication autenticacao =
+                SecurityContextHolder.getContext().getAuthentication();
+
         Usuario usuarioAutenticado = obterUsuarioAutenticado();
-        boolean funcaoNoBanco = FUNCAO_MASTER.equalsIgnoreCase(usuarioAutenticado.getFuncao().getNome());
-        boolean permissaoNaSessao = autenticacao != null && autenticacao.getAuthorities().stream().anyMatch(autoridade -> "ROLE_MASTER".equals(autoridade.getAuthority()));
+
+        boolean funcaoNoBanco = FUNCAO_MASTER.equalsIgnoreCase(
+                usuarioAutenticado.getFuncao().getNome()
+        );
+
+        boolean permissaoNaSessao = autenticacao != null
+                && autenticacao.getAuthorities().stream().anyMatch(
+                        autoridade -> "ROLE_MASTER".equals(
+                                autoridade.getAuthority()
+                        )
+                );
 
         if (!funcaoNoBanco || !permissaoNaSessao) {
-            throw new AccessDeniedException("Somente o MASTER pode realizar esta operação.");
+            throw new AccessDeniedException(
+                    "Somente o MASTER pode realizar esta operação."
+            );
         }
 
         return usuarioAutenticado;
@@ -533,7 +894,11 @@ public class UsuarioService {
 
     // Busca um usuário ou lança 404.
     private Usuario buscarUsuario(Long id) {
-        return usuarioRepository.findById(id).orElseThrow(() -> new RecursoNaoEncontradoException("Usuário não encontrado com ID: " + id));
+
+        return usuarioRepository.findById(id)
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "Usuário não encontrado com ID: " + id
+                ));
     }
 
     // Mantém somente os números.
@@ -558,7 +923,15 @@ public class UsuarioService {
 
     // Converte entidade para DTO de resposta.
     private UsuarioResponseDTO converterParaDTO(Usuario usuario) {
-        return new UsuarioResponseDTO(usuario.getIdUsuario(), usuario.getNome(), usuario.getEmail(), usuario.getFotoPerfil(), usuario.getFotoAlt(), usuario.getFuncao().getNome());
+
+        return new UsuarioResponseDTO(
+                usuario.getIdUsuario(),
+                usuario.getNome(),
+                usuario.getEmail(),
+                usuario.getFotoPerfil(),
+                usuario.getFotoAlt(),
+                usuario.getFuncao().getNome()
+        );
     }
 
     // Busca a entidade do próprio usuário autenticado.

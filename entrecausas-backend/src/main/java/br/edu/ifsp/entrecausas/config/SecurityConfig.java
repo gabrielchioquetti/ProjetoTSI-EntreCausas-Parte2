@@ -1,5 +1,8 @@
 package br.edu.ifsp.entrecausas.config;
 
+import br.edu.ifsp.entrecausas.repository.UsuarioRepository;
+import br.edu.ifsp.entrecausas.security.UsuarioAtivoFilter;
+
 import jakarta.servlet.http.HttpServletResponse;
 
 import org.springframework.context.annotation.Bean;
@@ -23,6 +26,8 @@ import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.security.web.session.ConcurrentSessionFilter;
 import org.springframework.security.web.session.SessionInformationExpiredStrategy;
+
+import org.springframework.web.filter.CorsFilter;
 
 @Configuration
 @EnableMethodSecurity
@@ -62,7 +67,8 @@ public class SecurityConfig {
             response.setCharacterEncoding("UTF-8");
 
             response.getWriter().write(
-                "{\"mensagem\":\"Sua sessão foi encerrada por segurança. Entre novamente na sua conta.\"}"
+                "{\"codigo\":\"SESSAO_EXPIRADA\","
+                + "\"mensagem\":\"Sua sessão foi encerrada por segurança. Entre novamente na sua conta.\"}"
             );
         };
     }
@@ -73,7 +79,8 @@ public class SecurityConfig {
             SecurityContextRepository securityContextRepository,
             SessionRegistry sessionRegistry,
             SessionInformationExpiredStrategy
-                    sessionInformationExpiredStrategy)
+                    sessionInformationExpiredStrategy,
+            UsuarioRepository usuarioRepository)
             throws Exception {
 
         http
@@ -145,6 +152,21 @@ public class SecurityConfig {
                     "/api/recuperacao-senha/redefinir"
                 ).permitAll()
 
+
+                // Somente o MASTER pode consultar o histórico de auditoria.
+                .requestMatchers(
+                    HttpMethod.GET,
+                    "/api/auditoria",
+                    "/api/auditoria/**"
+                ).hasRole("MASTER")
+
+                // Bloqueia outros métodos HTTP na auditoria.
+                .requestMatchers(
+                    "/api/auditoria",
+                    "/api/auditoria/**"
+                ).denyAll()
+
+
                 // A listagem completa de usuários
                 // é exclusiva do MASTER.
                 .requestMatchers(
@@ -152,10 +174,11 @@ public class SecurityConfig {
                     "/api/usuarios"
                 ).hasRole("MASTER")
 
-                // Somente o MASTER pode promover usuários.
+                // Somente o MASTER pode promover ou rebaixar usuários.
                 .requestMatchers(
                     HttpMethod.PUT,
-                    "/api/usuarios/*/promover"
+                    "/api/usuarios/*/promover",
+                    "/api/usuarios/*/rebaixar"
                 ).hasRole("MASTER")
 
                 // Impede a criação direta de solicitações.
@@ -294,6 +317,7 @@ public class SecurityConfig {
 
                 // Os demais endpoints exigem autenticação.
                 .anyRequest().authenticated()
+
             )
 
             // Retorna JSON quando falta autenticação
@@ -337,6 +361,7 @@ public class SecurityConfig {
                         );
                     }
                 )
+
             )
 
             // Desabilita o login por formulário do Spring.
@@ -360,11 +385,23 @@ public class SecurityConfig {
             );
 
         // Verifica se a sessão foi marcada como expirada.
-        // O registro das sessões será integrado ao AuthController.
-        http.addFilterBefore(
+        // Executa após o processamento CORS.
+        http.addFilterAfter(
             new ConcurrentSessionFilter(
                 sessionRegistry,
                 sessionInformationExpiredStrategy
+            ),
+            CorsFilter.class
+        );
+
+        // Bloqueia sessões de usuários inexistentes
+        // ou com contas desativadas.
+        // Executa após o carregamento da autenticação
+        // e antes da autorização dos endpoints.
+        http.addFilterBefore(
+            new UsuarioAtivoFilter(
+                usuarioRepository,
+                sessionRegistry
             ),
             AuthorizationFilter.class
         );

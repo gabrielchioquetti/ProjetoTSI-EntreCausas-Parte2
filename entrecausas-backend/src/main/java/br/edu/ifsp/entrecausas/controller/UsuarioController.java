@@ -1,6 +1,7 @@
 package br.edu.ifsp.entrecausas.controller;
 
 import br.edu.ifsp.entrecausas.dto.AlterarSenhaDTO;
+import br.edu.ifsp.entrecausas.dto.ExcluirContaDTO;
 import br.edu.ifsp.entrecausas.dto.UsuarioRequestDTO;
 import br.edu.ifsp.entrecausas.dto.UsuarioResponseDTO;
 import br.edu.ifsp.entrecausas.dto.UsuarioUpdateDTO;
@@ -91,18 +92,30 @@ public class UsuarioController {
     public ResponseEntity<UsuarioResponseDTO> promover(
             @PathVariable Long id) {
 
-        UsuarioResponseDTO usuario =
-                usuarioService.promoverParaAdministrador(id);
+        UsuarioResponseDTO usuario = usuarioService.promoverParaAdministrador(id);
 
         return ResponseEntity.ok(usuario);
     }
 
-    // Exclui a própria conta, exceto a conta MASTER.
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deletar(@PathVariable Long id) {
+    // Rebaixa um administrador para usuário comum.
+    // Operação exclusiva do MASTER.
+    @PreAuthorize("hasRole('MASTER')")
+    @PutMapping("/{id}/rebaixar")
+    public ResponseEntity<UsuarioResponseDTO> rebaixar(@PathVariable Long id) {
+        UsuarioResponseDTO usuario = usuarioService.rebaixarParaUsuario(id);
+        return ResponseEntity.ok(usuario);
+    }
 
-        usuarioService.deletar(id);
+    
+    // Desativa e anonimiza a própria conta, exceto MASTER.
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deletar(
+            @PathVariable Long id,
+            @Valid @RequestBody ExcluirContaDTO dto) {
+
+        usuarioService.deletar(id, dto.senhaAtual());
 
         return ResponseEntity.noContent().build();
     }
+
 }

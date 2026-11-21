@@ -70,8 +70,9 @@ public class RecuperacaoSenhaService {
         Optional<Usuario> usuarioOptional =
                 usuarioRepository.findByEmail(email);
 
-        // Não revela se o e-mail está cadastrado.
-        if (usuarioOptional.isEmpty()) {
+        // Não revela se o e-mail está cadastrado ou a conta está desativada.
+        if (usuarioOptional.isEmpty()
+                || !usuarioOptional.get().isAtivo()) {
             return;
         }
 
@@ -141,6 +142,11 @@ public class RecuperacaoSenhaService {
         Usuario usuario = usuarioRepository
                 .findByEmail(dto.email().trim())
                 .orElseThrow(this::codigoInvalido);
+
+        // Não aceita códigos de contas desativadas.
+        if (!usuario.isAtivo()) {
+            throw codigoInvalido();
+        }
 
         RecuperacaoSenha recuperacao = buscarRecuperacaoBloqueada(
                 usuario.getIdUsuario()
@@ -226,6 +232,12 @@ public class RecuperacaoSenhaService {
         }
 
         Usuario usuario = recuperacao.getUsuario();
+
+        // Impede redefinir a senha de contas desativadas,
+        // inclusive com autorizações emitidas anteriormente.
+        if (!usuario.isAtivo()) {
+            throw autorizacaoInvalida();
+        }
 
         usuario.setSenha(
                 passwordEncoder.encode(dto.novaSenha())

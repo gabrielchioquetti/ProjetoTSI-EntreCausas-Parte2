@@ -2,19 +2,14 @@ import { apiFetch } from "./Api";
 
 /**
  * Cadastra um novo usuário.
- *
- * O backend espera multipart/form-data,
- * com os dados do usuário na parte "usuario".
+ * O backend espera multipart/form-data, com os dados na parte "usuario".
  */
 export async function cadastrarUsuario(dados) {
   const formData = new FormData();
 
   formData.append(
     "usuario",
-    new Blob(
-      [JSON.stringify(dados)],
-      { type: "application/json" }
-    )
+    new Blob([JSON.stringify(dados)], { type: "application/json" }),
   );
 
   return apiFetch("/api/usuarios", {
@@ -37,6 +32,16 @@ export async function listarUsuarios() {
  */
 export async function promoverUsuario(id) {
   return apiFetch(`/api/usuarios/${id}/promover`, {
+    method: "PUT",
+  });
+}
+
+/**
+ * Rebaixa um administrador para usuário comum.
+ * Acesso exclusivo do MASTER.
+ */
+export async function rebaixarUsuario(id) {
+  return apiFetch(`/api/usuarios/${id}/rebaixar`, {
     method: "PUT",
   });
 }

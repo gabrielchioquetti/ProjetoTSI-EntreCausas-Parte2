@@ -196,6 +196,10 @@ public class DataInitializer {
         master.setTelefone(aesCryptoUtil.encrypt(telefone));
         master.setTelefoneHash(telefoneHash);
         master.setFuncao(funcaoMaster);
+
+        // Garante que a conta MASTER seja criada ativa.
+        master.setAtivo(true);
+
         master.setFotoPerfil(null);
         master.setFotoAlt(null);
 

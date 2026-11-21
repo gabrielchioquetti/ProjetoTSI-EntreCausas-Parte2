@@ -16,6 +16,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -75,8 +76,9 @@ public class AuthController {
         Optional<Usuario> resultado =
             usuarioRepository.findByEmail(dto.email().trim());
 
-        // Não revela se o e-mail existe no banco.
+        // Não revela se o e-mail existe ou se a conta está desativada.
         if (resultado.isEmpty()
+                || !resultado.get().isAtivo()
                 || !passwordEncoder.matches(
                     dto.senha(),
                     resultado.get().getSenha())) {
@@ -191,6 +193,15 @@ public class AuthController {
             HttpServletRequest request,
             HttpServletResponse response) {
 
+        // Impede autenticar uma conta desativada.
+        Usuario usuarioBanco = usuarioRepository
+            .findById(usuario.idUsuario())
+            .orElseThrow(() -> new AccessDeniedException(
+                "A conta não está disponível."
+            ));
+
+        validarContaAtiva(usuarioBanco);
+
         String funcao = usuario.funcaoNome()
             .trim()
             .toUpperCase(Locale.ROOT);
@@ -219,6 +230,8 @@ public class AuthController {
             HttpServletRequest request,
             HttpServletResponse response) {
 
+        validarContaAtiva(usuario);
+
         Authentication autenticacao =
             criarAutenticacao(usuario);
 
@@ -232,6 +245,8 @@ public class AuthController {
     // Cria a autenticação com a função definida no banco.
     private Authentication criarAutenticacao(
             Usuario usuario) {
+
+        validarContaAtiva(usuario);
 
         String funcao = usuario.getFuncao()
             .getNome()
@@ -247,6 +262,16 @@ public class AuthController {
             null,
             autoridades
         );
+    }
+
+    // Confirma que a conta ainda está ativa.
+    private void validarContaAtiva(Usuario usuario) {
+
+        if (usuario == null || !usuario.isAtivo()) {
+            throw new AccessDeniedException(
+                "Esta conta está desativada."
+            );
+        }
     }
 
     // Persiste a autenticação na sessão HTTP
@@ -308,7 +333,8 @@ public class AuthController {
                 autenticacao.getName()
             );
 
-        if (resultado.isEmpty()) {
+        // Rejeita contas inexistentes ou desativadas.
+        if (resultado.isEmpty() || !resultado.get().isAtivo()) {
 
             // Limpa a autenticação da requisição atual.
             SecurityContextHolder.clearContext();
@@ -323,6 +349,8 @@ public class AuthController {
 
                 sessao.invalidate();
             }
+
+            return Optional.empty();
         }
 
         return resultado;
