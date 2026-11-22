@@ -9,28 +9,30 @@ import java.util.Optional;
 // A anotação @Repository é desnecessária pois o Spring Data JPA reconhece automaticamente interfaces que estendem JpaRepository
 public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
 
-        // Busca usuário pelo e-mail.
-        Optional<Usuario> findByEmail(String email);
+    // Busca usuário pelo e-mail.
+    Optional<Usuario> findByEmail(String email);
 
-        // Verifica se o e-mail já está cadastrado.
-        boolean existsByEmail(String email);
+    // Verifica se o e-mail já está cadastrado.
+    boolean existsByEmail(String email);
 
-        // Verifica se o CPF já está cadastrado.
-        boolean existsByCpfHash(String cpfHash);
+    // Verifica se o CPF já está cadastrado.
+    boolean existsByCpfHash(String cpfHash);
 
-        // Verifica se o telefone já está cadastrado.
-        boolean existsByTelefoneHash(String telefoneHash);
+    // Verifica se o telefone já está cadastrado.
+    boolean existsByTelefoneHash(String telefoneHash);
 
-        // Verifica CPF em outro usuário durante atualização.
-        boolean existsByCpfHashAndIdUsuarioNot(String cpfHash, Long idUsuario);
+    // Verifica CPF em outro usuário durante atualização.
+    boolean existsByCpfHashAndIdUsuarioNot(String cpfHash, Long idUsuario);
 
-        // Verifica telefone em outro usuário durante atualização.
-        boolean existsByTelefoneHashAndIdUsuarioNot(String telefoneHash, Long idUsuario);
+    // Verifica telefone em outro usuário durante atualização.
+    boolean existsByTelefoneHashAndIdUsuarioNot(String telefoneHash, Long idUsuario);
 
-        // Busca o usuário proprietário de uma foto de perfil.
-        Optional<Usuario> findByFotoPerfil(String fotoPerfil);
+    // Busca o usuário proprietário de uma foto de perfil.
+    Optional<Usuario> findByFotoPerfil(String fotoPerfil);
 
-        // Lista os usuários que possuem a função informada.
-        List<Usuario> findByFuncaoNomeIgnoreCase(String nome);
+    // Lista os usuários que possuem a função informada.
+    List<Usuario> findByFuncaoNomeIgnoreCase(String nome);
 
+    // Lista usuários ativos que possuem uma das funções informadas.
+    List<Usuario> findByAtivoTrueAndFuncaoNomeIn(List<String> nomes);
 }

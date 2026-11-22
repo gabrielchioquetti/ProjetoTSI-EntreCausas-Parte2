@@ -38,67 +38,45 @@ public class ImagemController {
     }
 
     // Upload de UMA imagem.
-    @PostMapping(
-        value = "/api/imagens",
-        consumes = MediaType.MULTIPART_FORM_DATA_VALUE
-    )
+    @PostMapping(value = "/api/imagens", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ImagemResponseDTO> cadastrar(
             @RequestParam("idOng") Long idOng,
-            @RequestParam(
-                value = "textoAlternativo",
-                required = false
-            )
-            String textoAlternativo,
+            @RequestParam(value = "textoAlternativo", required = false) String textoAlternativo,
             @RequestParam("file") MultipartFile file) {
 
-        ImagemResponseDTO response =
-            imagemService.cadastrar(
+        ImagemResponseDTO response = imagemService.cadastrar(
                 idOng,
                 textoAlternativo,
-                file
-            );
+                file);
 
         return ResponseEntity
-            .status(HttpStatus.CREATED)
-            .body(response);
+                .status(HttpStatus.CREATED)
+                .body(response);
     }
 
     // Upload em lote de imagens.
-    @PostMapping(
-        value = "/api/imagens/lote",
-        consumes = MediaType.MULTIPART_FORM_DATA_VALUE
-    )
-    public ResponseEntity<List<ImagemResponseDTO>>
-            cadastrarEmLote(
-                @RequestParam("idOng") Long idOng,
-                @RequestParam(
-                    value = "textosAlternativos",
-                    required = false
-                )
-                List<String> textosAlternativos,
-                @RequestParam("files")
-                List<MultipartFile> files) {
+    @PostMapping(value = "/api/imagens/lote", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<List<ImagemResponseDTO>> cadastrarEmLote(
+            @RequestParam("idOng") Long idOng,
+            @RequestParam(value = "textosAlternativos", required = false) List<String> textosAlternativos,
+            @RequestParam("files") List<MultipartFile> files) {
 
-        List<ImagemResponseDTO> responses =
-            imagemService.cadastrarEmLote(
+        List<ImagemResponseDTO> responses = imagemService.cadastrarEmLote(
                 idOng,
                 textosAlternativos,
-                files
-            );
+                files);
 
         return ResponseEntity
-            .status(HttpStatus.CREATED)
-            .body(responses);
+                .status(HttpStatus.CREATED)
+                .body(responses);
     }
 
     // Lista todas as imagens.
     @GetMapping("/api/imagens")
-    public ResponseEntity<List<ImagemResponseDTO>>
-            listarTodas() {
+    public ResponseEntity<List<ImagemResponseDTO>> listarTodas() {
 
         return ResponseEntity.ok(
-            imagemService.listarTodas()
-        );
+                imagemService.listarTodas());
     }
 
     // Busca uma imagem pelo ID.
@@ -107,47 +85,31 @@ public class ImagemController {
             @PathVariable Long id) {
 
         return ResponseEntity.ok(
-            imagemService.buscarPorId(id)
-        );
+                imagemService.buscarPorId(id));
     }
 
     // Lista as imagens de uma ONG.
     @GetMapping("/api/imagens/ong/{idOng}")
-    public ResponseEntity<List<ImagemResponseDTO>>
-            listarPorOng(
-                @PathVariable Long idOng) {
+    public ResponseEntity<List<ImagemResponseDTO>> listarPorOng(
+            @PathVariable Long idOng) {
 
         return ResponseEntity.ok(
-            imagemService.listarPorOng(idOng)
-        );
+                imagemService.listarPorOng(idOng));
     }
 
     // Atualiza uma imagem com arquivo opcional.
-    @PutMapping(
-        value = "/api/imagens/{id}",
-        consumes = MediaType.MULTIPART_FORM_DATA_VALUE
-    )
+    @PutMapping(value = "/api/imagens/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ImagemResponseDTO> atualizar(
             @PathVariable Long id,
             @RequestParam("idOng") Long idOng,
-            @RequestParam(
-                value = "textoAlternativo",
-                required = false
-            )
-            String textoAlternativo,
-            @RequestParam(
-                value = "file",
-                required = false
-            )
-            MultipartFile file) {
+            @RequestParam(value = "textoAlternativo", required = false) String textoAlternativo,
+            @RequestParam(value = "file", required = false) MultipartFile file) {
 
-        ImagemResponseDTO response =
-            imagemService.atualizar(
+        ImagemResponseDTO response = imagemService.atualizar(
                 id,
                 idOng,
                 textoAlternativo,
-                file
-            );
+                file);
 
         return ResponseEntity.ok(response);
     }
@@ -160,8 +122,8 @@ public class ImagemController {
         imagemService.deletar(id);
 
         return ResponseEntity
-            .noContent()
-            .build();
+                .noContent()
+                .build();
     }
 
     // Entrega uma imagem após verificar a autorização.
@@ -172,30 +134,24 @@ public class ImagemController {
 
         // Verifica se o visitante pode acessar a imagem.
         imagemService.verificarAcesso(
-            nomeArquivo,
-            authentication
-        );
+                nomeArquivo,
+                authentication);
 
         // Carrega o arquivo somente após a autorização.
-        Resource recurso =
-            fileStorageService.carregarArquivo(nomeArquivo);
+        Resource recurso = fileStorageService.carregarArquivo(nomeArquivo);
 
-        String tipoConteudo =
-            fileStorageService.obterTipoConteudo(nomeArquivo);
+        String tipoConteudo = fileStorageService.obterTipoConteudo(nomeArquivo);
 
         return ResponseEntity.ok()
-            .contentType(MediaType.parseMediaType(tipoConteudo))
-            .header(
-                HttpHeaders.CONTENT_DISPOSITION,
-                "inline"
-            )
-            .header(
-                "X-Content-Type-Options",
-                "nosniff"
-            )
-            .cacheControl(
-                CacheControl.noStore()
-            )
-            .body(recurso);
+                .contentType(MediaType.parseMediaType(tipoConteudo))
+                .header(
+                        HttpHeaders.CONTENT_DISPOSITION,
+                        "inline")
+                .header(
+                        "X-Content-Type-Options",
+                        "nosniff")
+                .cacheControl(
+                        CacheControl.noStore())
+                .body(recurso);
     }
 }

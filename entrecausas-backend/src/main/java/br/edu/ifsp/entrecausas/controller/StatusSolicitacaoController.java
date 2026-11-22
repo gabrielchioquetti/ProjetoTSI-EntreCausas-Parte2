@@ -36,16 +36,14 @@ public class StatusSolicitacaoController {
     public ResponseEntity<StatusSolicitacaoResponseDTO> buscarPorId(@PathVariable Long idStatus) {
 
         return ResponseEntity.ok(
-            statusSolicitacaoService.buscarPorId(idStatus)
-        );
+                statusSolicitacaoService.buscarPorId(idStatus));
     }
 
     // Busca um status pelo nome.
     @GetMapping("/nome/{nome}")
-    public ResponseEntity<StatusSolicitacaoResponseDTO> buscarPorNome(@PathVariable String nome){
+    public ResponseEntity<StatusSolicitacaoResponseDTO> buscarPorNome(@PathVariable String nome) {
 
         return ResponseEntity.ok(
-            statusSolicitacaoService.buscarPorNome(nome)
-        );
+                statusSolicitacaoService.buscarPorNome(nome));
     }
 }

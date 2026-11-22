@@ -47,27 +47,23 @@ public class OngCategoriaService {
 
         // Verifica se a categoria existe.
         Categoria categoria = buscarCategoria(
-            dto.idCategoria()
-        );
+                dto.idCategoria());
 
         // Impede vínculos duplicados.
         if (ongCategoriaRepository
                 .existsByOngIdOngAndCategoriaIdCategoria(
-                    dto.idOng(),
-                    dto.idCategoria())) {
+                        dto.idOng(),
+                        dto.idCategoria())) {
 
             throw new ConflitoException(
-                "Esta ONG já possui esta categoria associada."
-            );
+                    "Esta ONG já possui esta categoria associada.");
         }
 
         // Cria o vínculo entre ONG e categoria.
-        OngCategoria ongCategoria =
-            new OngCategoria(ong, categoria);
+        OngCategoria ongCategoria = new OngCategoria(ong, categoria);
 
         // Salva o vínculo.
-        OngCategoria salva =
-            ongCategoriaRepository.save(ongCategoria);
+        OngCategoria salva = ongCategoriaRepository.save(ongCategoria);
 
         return converterParaDTO(salva);
     }
@@ -81,10 +77,10 @@ public class OngCategoriaService {
         buscarOng(idOng);
 
         return ongCategoriaRepository
-            .findByOngIdOng(idOng)
-            .stream()
-            .map(this::converterParaDTO)
-            .collect(Collectors.toList());
+                .findByOngIdOng(idOng)
+                .stream()
+                .map(this::converterParaDTO)
+                .collect(Collectors.toList());
     }
 
     // Lista todas as ONGs associadas a uma categoria.
@@ -96,10 +92,10 @@ public class OngCategoriaService {
         buscarCategoria(idCategoria);
 
         return ongCategoriaRepository
-            .findByCategoriaIdCategoria(idCategoria)
-            .stream()
-            .map(this::converterParaDTO)
-            .collect(Collectors.toList());
+                .findByCategoriaIdCategoria(idCategoria)
+                .stream()
+                .map(this::converterParaDTO)
+                .collect(Collectors.toList());
     }
 
     // Remove uma associação pelo ID do vínculo.
@@ -107,15 +103,11 @@ public class OngCategoriaService {
     public void desassociar(Long idOngCategoria) {
 
         // Busca o vínculo existente.
-        OngCategoria ongCategoria =
-            ongCategoriaRepository.findById(idOngCategoria)
-                .orElseThrow(() ->
-                    new RecursoNaoEncontradoException(
+        OngCategoria ongCategoria = ongCategoriaRepository.findById(idOngCategoria)
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
                         "Associação ONG-Categoria não encontrada "
-                        + "com o ID: "
-                        + idOngCategoria
-                    )
-                );
+                                + "com o ID: "
+                                + idOngCategoria));
 
         // Remove o vínculo.
         ongCategoriaRepository.delete(ongCategoria);
@@ -136,45 +128,37 @@ public class OngCategoriaService {
         // Verifica se o vínculo existe.
         if (!ongCategoriaRepository
                 .existsByOngIdOngAndCategoriaIdCategoria(
-                    idOng,
-                    idCategoria)) {
+                        idOng,
+                        idCategoria)) {
 
             throw new RecursoNaoEncontradoException(
-                "A associação entre a ONG e a categoria "
-                + "não foi encontrada."
-            );
+                    "A associação entre a ONG e a categoria "
+                            + "não foi encontrada.");
         }
 
         // Remove o vínculo.
         ongCategoriaRepository
-            .deleteByOngIdOngAndCategoriaIdCategoria(
-                idOng,
-                idCategoria
-            );
+                .deleteByOngIdOngAndCategoriaIdCategoria(
+                        idOng,
+                        idCategoria);
     }
 
     // Busca uma ONG ou lança uma exceção 404.
     private Ong buscarOng(Long idOng) {
 
         return ongRepository.findById(idOng)
-            .orElseThrow(() ->
-                new RecursoNaoEncontradoException(
-                    "ONG não encontrada com o ID: "
-                    + idOng
-                )
-            );
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "ONG não encontrada com o ID: "
+                                + idOng));
     }
 
     // Busca uma categoria ou lança uma exceção 404.
     private Categoria buscarCategoria(Long idCategoria) {
 
         return categoriaRepository.findById(idCategoria)
-            .orElseThrow(() ->
-                new RecursoNaoEncontradoException(
-                    "Categoria não encontrada com o ID: "
-                    + idCategoria
-                )
-            );
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "Categoria não encontrada com o ID: "
+                                + idCategoria));
     }
 
     // Converte a entidade para o DTO de resposta.
@@ -182,11 +166,10 @@ public class OngCategoriaService {
             OngCategoria ongCategoria) {
 
         return new OngCategoriaResponseDTO(
-            ongCategoria.getIdOngCategoria(),
-            ongCategoria.getOng().getIdOng(),
-            ongCategoria.getOng().getNome(),
-            ongCategoria.getCategoria().getIdCategoria(),
-            ongCategoria.getCategoria().getNome()
-        );
+                ongCategoria.getIdOngCategoria(),
+                ongCategoria.getOng().getIdOng(),
+                ongCategoria.getOng().getNome(),
+                ongCategoria.getCategoria().getIdCategoria(),
+                ongCategoria.getCategoria().getNome());
     }
 }

@@ -1,8 +1,12 @@
+import { useState } from "react";
+
 import Footer from "../../components/Footer/Footer";
 import OngsCarrossel from "../../components/Ongs/OngsCarrossel";
 import BackToTop from "../../components/Acessibilidade/BackToTop";
 import VLibras from "../../components/Acessibilidade/VLibras";
 import UserWay from "../../components/Acessibilidade/UserWay";
+
+import { apiFetch } from "../../services/Api.js";
 
 const duvidasFrequentes = [
   {
@@ -23,23 +27,55 @@ const duvidasFrequentes = [
 ];
 
 function FaleConosco() {
-  function enviarMensagem(event) {
+  const [enviando, setEnviando] = useState(false);
+  const [resultado, setResultado] = useState(null);
+
+  async function enviarMensagem(event) {
     event.preventDefault();
 
-    const dados = new FormData(event.currentTarget);
-    const assunto = `Contato EntreCausas: ${dados.get("assunto")}`;
-    const corpo = [
-      `Nome: ${dados.get("nome")}`,
-      `E-mail: ${dados.get("email")}`,
-      `Como podemos ajudar: ${dados.get("assunto")}`,
-      "",
-      "Mensagem:",
-      dados.get("mensagem"),
-    ].join("\n");
+    if (enviando) {
+      return;
+    }
 
-    window.location.href = `mailto:contato@entrecausas.org.br?subject=${encodeURIComponent(
-      assunto,
-    )}&body=${encodeURIComponent(corpo)}`;
+    const formulario = event.currentTarget;
+    const dados = new FormData(formulario);
+
+    const contato = {
+      nome: String(dados.get("nome") || "").trim(),
+      email: String(dados.get("email") || "").trim(),
+      assunto: String(dados.get("assunto") || "").trim(),
+      mensagem: String(dados.get("mensagem") || "").trim(),
+    };
+
+    setEnviando(true);
+    setResultado(null);
+
+    try {
+      const resposta = await apiFetch("/api/contato", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(contato),
+      });
+
+      setResultado({
+        tipo: "sucesso",
+        mensagem: resposta?.mensagem || "Sua mensagem foi enviada com sucesso!",
+      });
+
+      formulario.reset();
+    } catch (erro) {
+      setResultado({
+        tipo: "erro",
+        mensagem:
+          erro?.mensagem ||
+          erro?.message ||
+          "Não foi possível enviar sua mensagem. Tente novamente mais tarde.",
+      });
+    } finally {
+      setEnviando(false);
+    }
   }
 
   return (
@@ -74,12 +110,14 @@ function FaleConosco() {
               <p className="mb-4 text-sm font-bold uppercase tracking-[0.18em] text-primary">
                 Estamos aqui para ajudar
               </p>
+
               <h1
                 id="titulo-contato"
                 className="text-4xl font-black leading-tight tracking-tight md:text-5xl"
               >
                 Fale <span className="text-primary">Conosco</span>
               </h1>
+
               <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-base-content/65 md:text-lg md:leading-8">
                 Tem uma dúvida, quer cadastrar uma organização ou fazer parte de
                 uma causa? Envie sua mensagem. Vamos adorar conversar com você.
@@ -90,14 +128,19 @@ function FaleConosco() {
               <section aria-labelledby="titulo-duvidas">
                 <div className="mb-7">
                   <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-xl text-primary">
-                    <i className="fa-solid fa-circle-question" aria-hidden="true" />
+                    <i
+                      className="fa-solid fa-circle-question"
+                      aria-hidden="true"
+                    />
                   </div>
+
                   <h2
                     id="titulo-duvidas"
                     className="text-2xl font-black md:text-3xl"
                   >
                     Dúvidas Frequentes
                   </h2>
+
                   <p className="mt-2 leading-7 text-base-content/60">
                     Reunimos respostas rápidas para reduzir atrito e deixar o
                     contato mais objetivo.
@@ -113,6 +156,7 @@ function FaleConosco() {
                     >
                       <summary className="flex cursor-pointer list-none items-start justify-between gap-4 font-bold leading-6 marker:content-none focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary">
                         {duvida.pergunta}
+
                         <span
                           className="shrink-0 text-xl leading-6 text-primary"
                           aria-hidden="true"
@@ -120,6 +164,7 @@ function FaleConosco() {
                           +
                         </span>
                       </summary>
+
                       <p className="mt-3 pr-7 text-sm leading-6 text-base-content/65">
                         {duvida.resposta}
                       </p>
@@ -133,18 +178,23 @@ function FaleConosco() {
                       className="fa-regular fa-clock mt-1 text-primary"
                       aria-hidden="true"
                     />
+
                     <div>
-                      <p className="text-sm font-bold">Retorno em até 2 dias úteis</p>
+                      <p className="text-sm font-bold">
+                        Retorno em até 2 dias úteis
+                      </p>
                       <p className="mt-1 text-sm text-base-content/60">
                         A gente responde assim que possível.
                       </p>
                     </div>
                   </div>
+
                   <div className="flex items-start gap-3 rounded-2xl bg-base-200/70 p-4">
                     <i
                       className="fa-solid fa-location-dot mt-1 text-primary"
                       aria-hidden="true"
                     />
+
                     <div>
                       <p className="text-sm font-bold">Itapetininga - SP</p>
                       <p className="mt-1 text-sm text-base-content/60">
@@ -163,15 +213,17 @@ function FaleConosco() {
                   <p className="mb-2 text-sm font-bold uppercase tracking-[0.14em] text-primary">
                     Mande uma mensagem
                   </p>
+
                   <h2
                     id="titulo-formulario"
                     className="text-2xl font-black md:text-3xl"
                   >
                     Como podemos ajudar?
                   </h2>
+
                   <p className="mt-2 leading-7 text-base-content/60">
-                    Preencha os campos e sua mensagem será preparada no
-                    aplicativo de e-mail.
+                    Preencha os campos e envie sua mensagem diretamente para
+                    nossa equipe.
                   </p>
                 </div>
 
@@ -183,14 +235,17 @@ function FaleConosco() {
                     >
                       Nome
                     </label>
+
                     <input
                       id="contato-nome"
                       name="nome"
                       type="text"
                       autoComplete="name"
                       placeholder="Digite seu nome"
+                      maxLength={100}
                       className="input input-bordered w-full rounded-xl bg-base-100 focus:border-primary focus:outline-none"
                       required
+                      disabled={enviando}
                     />
                   </div>
 
@@ -201,14 +256,17 @@ function FaleConosco() {
                     >
                       E-mail
                     </label>
+
                     <input
                       id="contato-email"
                       name="email"
                       type="email"
                       autoComplete="email"
                       placeholder="Digite seu endereço de e-mail"
+                      maxLength={100}
                       className="input input-bordered w-full rounded-xl bg-base-100 focus:border-primary focus:outline-none"
                       required
+                      disabled={enviando}
                     />
                   </div>
 
@@ -219,22 +277,31 @@ function FaleConosco() {
                     >
                       Como podemos ajudar?
                     </label>
+
                     <select
                       id="contato-assunto"
                       name="assunto"
                       defaultValue=""
                       className="select select-bordered w-full rounded-xl bg-base-100 focus:border-primary focus:outline-none"
                       required
+                      disabled={enviando}
                     >
                       <option value="" disabled>
                         Selecione uma opção
                       </option>
+
                       <option value="Cadastro de ONG">Cadastro de ONG</option>
+
                       <option value="Voluntariado">Voluntariado</option>
-                      <option value="Parcerias e apoio">Parcerias e apoio</option>
+
+                      <option value="Parcerias e apoio">
+                        Parcerias e apoio
+                      </option>
+
                       <option value="Dúvidas sobre a plataforma">
                         Dúvidas sobre a plataforma
                       </option>
+
                       <option value="Outro">Outro assunto</option>
                     </select>
                   </div>
@@ -246,32 +313,81 @@ function FaleConosco() {
                     >
                       Mensagem
                     </label>
+
                     <textarea
                       id="contato-mensagem"
                       name="mensagem"
                       rows="5"
                       placeholder="Escreva sua mensagem para nós"
+                      minLength={10}
+                      maxLength={2000}
                       className="textarea textarea-bordered w-full resize-y rounded-xl bg-base-100 leading-6 focus:border-primary focus:outline-none"
                       required
+                      disabled={enviando}
                     />
                   </div>
 
+                  {resultado && (
+                    <div
+                      role={resultado.tipo === "erro" ? "alert" : "status"}
+                      aria-live={
+                        resultado.tipo === "erro" ? "assertive" : "polite"
+                      }
+                      className={`rounded-xl border p-4 text-sm font-medium ${
+                        resultado.tipo === "sucesso"
+                          ? "border-success/30 bg-success/10 text-success"
+                          : "border-error/30 bg-error/10 text-error"
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <i
+                          className={
+                            resultado.tipo === "sucesso"
+                              ? "fa-solid fa-circle-check mt-0.5"
+                              : "fa-solid fa-circle-exclamation mt-0.5"
+                          }
+                          aria-hidden="true"
+                        />
+
+                        <p>{resultado.mensagem}</p>
+                      </div>
+                    </div>
+                  )}
+
                   <button
                     type="submit"
+                    disabled={enviando}
                     className="btn btn-primary h-13 w-full rounded-xl border-none text-base font-bold"
                   >
-                    Enviar mensagem
-                    <i className="fa-solid fa-arrow-right" aria-hidden="true" />
+                    {enviando ? (
+                      <>
+                        <span
+                          className="loading loading-spinner loading-sm"
+                          aria-hidden="true"
+                        />
+                        Enviando mensagem...
+                      </>
+                    ) : (
+                      <>
+                        Enviar mensagem
+                        <i
+                          className="fa-solid fa-arrow-right"
+                          aria-hidden="true"
+                        />
+                      </>
+                    )}
                   </button>
+
                   <p className="text-xs leading-5 text-base-content/50">
-                    O envio depende de um aplicativo de e-mail configurado no
-                    seu dispositivo.
+                    Sua mensagem será encaminhada à equipe do EntreCausas. Não é
+                    necessário ter um aplicativo de e-mail instalado.
                   </p>
                 </form>
               </section>
             </div>
           </div>
         </section>
+
         <OngsCarrossel />
       </main>
 

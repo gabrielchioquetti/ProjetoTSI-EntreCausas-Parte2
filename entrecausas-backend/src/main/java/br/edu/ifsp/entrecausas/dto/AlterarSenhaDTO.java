@@ -6,21 +6,14 @@ import jakarta.validation.constraints.Size;
 // DTO utilizado para alteração da senha.
 public record AlterarSenhaDTO(
 
-    // Senha atualmente cadastrada.
-    @NotBlank(message = "A senha atual é obrigatória")
-    String senhaAtual,
+        // Senha atualmente cadastrada.
+        @NotBlank(message = "A senha atual é obrigatória") String senhaAtual,
 
-    // Nova senha escolhida pelo usuário.
-    @NotBlank(message = "A nova senha é obrigatória")
-    @Size(
-        min = 8,
-        max = 50,
-        message = "A nova senha deve conter entre 8 e 50 caracteres"
-    )
-    String novaSenha,
+        // Nova senha escolhida pelo usuário.
+        @NotBlank(message = "A nova senha é obrigatória") @Size(min = 8, max = 50, message = "A nova senha deve conter entre 8 e 50 caracteres") String novaSenha,
 
-    // Confirmação da nova senha.
-    @NotBlank(message = "A confirmação da senha é obrigatória")
-    String confirmarSenha
+        // Confirmação da nova senha.
+        @NotBlank(message = "A confirmação da senha é obrigatória") String confirmarSenha
 
-) {}
+) {
+}

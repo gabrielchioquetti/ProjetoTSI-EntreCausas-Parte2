@@ -2,7 +2,6 @@ package br.edu.ifsp.entrecausas.service;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.MailException;
 import org.springframework.mail.SimpleMailMessage;
@@ -17,7 +16,7 @@ public class EmailService {
     private final String emailRemetente;
 
     public EmailService(JavaMailSender mailSender,
-                        @Value("${spring.mail.username}") String emailRemetente) {
+            @Value("${spring.mail.username}") String emailRemetente) {
         this.mailSender = mailSender;
         this.emailRemetente = emailRemetente;
     }
@@ -54,19 +53,19 @@ public class EmailService {
         String assunto = "Bem-vindo ao EntreCausas!";
 
         String mensagem = """
-            Olá, %s!
+                Olá, %s!
 
-            Seja bem-vindo ao EntreCausas!
+                Seja bem-vindo ao EntreCausas!
 
-            Sua conta foi cadastrada com sucesso.
+                Sua conta foi cadastrada com sucesso.
 
-            Agora você pode conhecer organizações,
-            acompanhar suas atividades e participar
-            da nossa comunidade.
+                Agora você pode conhecer organizações,
+                acompanhar suas atividades e participar
+                da nossa comunidade.
 
-            Atenciosamente,
-            Equipe EntreCausas
-            """.formatted(nomeUsuario);
+                Atenciosamente,
+                Equipe EntreCausas
+                """.formatted(nomeUsuario);
 
         return enviarEmail(emailUsuario, assunto, mensagem);
     }
@@ -81,25 +80,24 @@ public class EmailService {
         String assunto = "Solicitação recebida - EntreCausas";
 
         String mensagem = """
-            Olá, %s!
+                Olá, %s!
 
-            Recebemos sua solicitação referente à ONG %s.
+                Recebemos sua solicitação referente à ONG %s.
 
-            Tipo de solicitação: %s
+                Tipo de solicitação: %s
 
-            Sua solicitação está pendente de análise
-            pela equipe administrativa.
+                Sua solicitação está pendente de análise
+                pela equipe administrativa.
 
-            Você será informado quando houver
-            uma decisão.
+                Você será informado quando houver
+                uma decisão.
 
-            Atenciosamente,
-            Equipe EntreCausas
-            """.formatted(
+                Atenciosamente,
+                Equipe EntreCausas
+                """.formatted(
                 nomeUsuario,
                 nomeOng,
-                descricaoTipo(tipoSolicitacao)
-            );
+                descricaoTipo(tipoSolicitacao));
 
         return enviarEmail(emailUsuario, assunto, mensagem);
     }
@@ -113,23 +111,22 @@ public class EmailService {
         String assunto = "Nova solicitação pendente - EntreCausas";
 
         String mensagem = """
-            Olá!
+                Olá!
 
-            Uma nova solicitação foi registrada no EntreCausas.
+                Uma nova solicitação foi registrada no EntreCausas.
 
-            ONG: %s
-            Tipo: %s
-            Status: Pendente
+                ONG: %s
+                Tipo: %s
+                Status: Pendente
 
-            Acesse o painel administrativo
-            para analisar a solicitação.
+                Acesse o painel administrativo
+                para analisar a solicitação.
 
-            Atenciosamente,
-            Sistema EntreCausas
-            """.formatted(
+                Atenciosamente,
+                Sistema EntreCausas
+                """.formatted(
                 nomeOng,
-                descricaoTipo(tipoSolicitacao)
-            );
+                descricaoTipo(tipoSolicitacao));
 
         return enviarEmail(emailAdministrador, assunto, mensagem);
     }
@@ -144,22 +141,21 @@ public class EmailService {
         String assunto = "Solicitação aprovada - EntreCausas";
 
         String mensagem = """
-            Olá, %s!
+                Olá, %s!
 
-            Sua solicitação referente à ONG %s
-            foi aprovada!
+                Sua solicitação referente à ONG %s
+                foi aprovada!
 
-            Tipo de solicitação: %s
+                Tipo de solicitação: %s
 
-            A decisão já foi registrada no sistema.
+                A decisão já foi registrada no sistema.
 
-            Atenciosamente,
-            Equipe EntreCausas
-            """.formatted(
+                Atenciosamente,
+                Equipe EntreCausas
+                """.formatted(
                 nomeUsuario,
                 nomeOng,
-                descricaoTipo(tipoSolicitacao)
-            );
+                descricaoTipo(tipoSolicitacao));
 
         return enviarEmail(emailUsuario, assunto, mensagem);
     }
@@ -175,27 +171,26 @@ public class EmailService {
         String assunto = "Solicitação rejeitada - EntreCausas";
 
         String mensagem = """
-            Olá, %s!
+                Olá, %s!
 
-            Sua solicitação referente à ONG %s
-            não foi aprovada.
+                Sua solicitação referente à ONG %s
+                não foi aprovada.
 
-            Tipo de solicitação: %s
+                Tipo de solicitação: %s
 
-            Motivo da rejeição:
-            %s
+                Motivo da rejeição:
+                %s
 
-            Acesse o EntreCausas para consultar
-            a situação da sua organização.
+                Acesse o EntreCausas para consultar
+                a situação da sua organização.
 
-            Atenciosamente,
-            Equipe EntreCausas
-            """.formatted(
+                Atenciosamente,
+                Equipe EntreCausas
+                """.formatted(
                 nomeUsuario,
                 nomeOng,
                 descricaoTipo(tipoSolicitacao),
-                motivoRejeicao
-            );
+                motivoRejeicao);
 
         return enviarEmail(emailUsuario, assunto, mensagem);
     }
@@ -204,8 +199,7 @@ public class EmailService {
     public boolean enviarCodigoRecuperacao(
             String nomeUsuario,
             String emailUsuario,
-            String codigo
-    ) {
+            String codigo) {
         String assunto = "EntreCausas - Recuperação de senha";
 
         String mensagem = """
@@ -233,8 +227,7 @@ public class EmailService {
     // Confirma a desativação e anonimização da conta.
     public boolean enviarConfirmacaoExclusaoConta(
             String nomeUsuario,
-            String emailUsuario
-    ) {
+            String emailUsuario) {
         String assunto = "Conta excluída - EntreCausas";
 
         String mensagem = """
@@ -260,8 +253,7 @@ public class EmailService {
     // Notifica a promoção de usuário para administrador.
     public boolean enviarPromocaoAdministrador(
             String nomeUsuario,
-            String emailUsuario
-    ) {
+            String emailUsuario) {
         String assunto = "Promoção para administrador - EntreCausas";
 
         String mensagem = """
@@ -295,8 +287,7 @@ public class EmailService {
     // Notifica o rebaixamento de administrador para usuário.
     public boolean enviarRebaixamentoUsuario(
             String nomeUsuario,
-            String emailUsuario
-    ) {
+            String emailUsuario) {
         String assunto = "Alteração de função - EntreCausas";
 
         String mensagem = """

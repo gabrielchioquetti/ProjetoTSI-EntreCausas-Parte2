@@ -29,9 +29,9 @@ public class StatusSolicitacaoService {
     public List<StatusSolicitacaoResponseDTO> listarTodos() {
 
         return statusRepository.findAll()
-            .stream()
-            .map(this::converterParaDTO)
-            .collect(Collectors.toList());
+                .stream()
+                .map(this::converterParaDTO)
+                .collect(Collectors.toList());
     }
 
     // Busca um status pelo ID.
@@ -39,8 +39,7 @@ public class StatusSolicitacaoService {
     public StatusSolicitacaoResponseDTO buscarPorId(
             Long idStatus) {
 
-        StatusSolicitacao status =
-            buscarEntidadePorId(idStatus);
+        StatusSolicitacao status = buscarEntidadePorId(idStatus);
 
         return converterParaDTO(status);
     }
@@ -50,14 +49,10 @@ public class StatusSolicitacaoService {
     public StatusSolicitacaoResponseDTO buscarPorNome(
             String nome) {
 
-        StatusSolicitacao status =
-            statusRepository.findByNome(nome)
-                .orElseThrow(() ->
-                    new RecursoNaoEncontradoException(
+        StatusSolicitacao status = statusRepository.findByNome(nome)
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
                         "Status não encontrado com o nome: "
-                        + nome
-                    )
-                );
+                                + nome));
 
         return converterParaDTO(status);
     }
@@ -67,12 +62,9 @@ public class StatusSolicitacaoService {
             Long idStatus) {
 
         return statusRepository.findById(idStatus)
-            .orElseThrow(() ->
-                new RecursoNaoEncontradoException(
-                    "Status não encontrado com o ID: "
-                    + idStatus
-                )
-            );
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "Status não encontrado com o ID: "
+                                + idStatus));
     }
 
     // Converte a entidade para o DTO de resposta.
@@ -80,8 +72,7 @@ public class StatusSolicitacaoService {
             StatusSolicitacao status) {
 
         return new StatusSolicitacaoResponseDTO(
-            status.getIdStatus(),
-            status.getNome()
-        );
+                status.getIdStatus(),
+                status.getNome());
     }
 }

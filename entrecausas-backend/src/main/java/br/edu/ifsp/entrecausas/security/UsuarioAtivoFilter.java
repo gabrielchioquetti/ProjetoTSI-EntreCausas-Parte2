@@ -1,91 +1,84 @@
 package br.edu.ifsp.entrecausas.security;
 
-import br.edu.ifsp.entrecausas.entity.Usuario;
-import br.edu.ifsp.entrecausas.repository.UsuarioRepository;
-
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
+import java.io.IOException;
+import java.util.Optional;
 
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.session.SessionRegistry;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import java.io.IOException;
-import java.util.Optional;
+import br.edu.ifsp.entrecausas.entity.Usuario;
+import br.edu.ifsp.entrecausas.repository.UsuarioRepository;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 
 public class UsuarioAtivoFilter extends OncePerRequestFilter {
 
-    private final UsuarioRepository usuarioRepository;
-    private final SessionRegistry sessionRegistry;
+        private final UsuarioRepository usuarioRepository;
+        private final SessionRegistry sessionRegistry;
 
-    public UsuarioAtivoFilter(
-            UsuarioRepository usuarioRepository,
-            SessionRegistry sessionRegistry) {
+        public UsuarioAtivoFilter(
+                        UsuarioRepository usuarioRepository,
+                        SessionRegistry sessionRegistry) {
 
-        this.usuarioRepository = usuarioRepository;
-        this.sessionRegistry = sessionRegistry;
-    }
-
-    @Override
-    protected void doFilterInternal(
-            HttpServletRequest request,
-            HttpServletResponse response,
-            FilterChain filterChain)
-            throws ServletException, IOException {
-
-        Authentication autenticacao =
-                SecurityContextHolder.getContext()
-                        .getAuthentication();
-
-        // Requisições sem autenticação continuam normalmente.
-        if (autenticacao == null
-                || !autenticacao.isAuthenticated()
-                || autenticacao instanceof
-                        org.springframework.security.authentication.AnonymousAuthenticationToken) {
-
-            filterChain.doFilter(request, response);
-            return;
+                this.usuarioRepository = usuarioRepository;
+                this.sessionRegistry = sessionRegistry;
         }
 
-        // A autenticação do EntreCausas usa o e-mail.
-        String email = autenticacao.getName();
+        @Override
+        protected void doFilterInternal(
+                        HttpServletRequest request,
+                        HttpServletResponse response,
+                        FilterChain filterChain)
+                        throws ServletException, IOException {
 
-        Optional<Usuario> resultado =
-                usuarioRepository.findByEmail(email);
+                Authentication autenticacao = SecurityContextHolder.getContext()
+                                .getAuthentication();
 
-        // Bloqueia contas inexistentes ou desativadas.
-        if (resultado.isEmpty() || !resultado.get().isAtivo()) {
+                // Requisições sem autenticação continuam normalmente.
+                if (autenticacao == null
+                                || !autenticacao.isAuthenticated()
+                                || autenticacao instanceof org.springframework.security.authentication.AnonymousAuthenticationToken) {
 
-            HttpSession sessao = request.getSession(false);
+                        filterChain.doFilter(request, response);
+                        return;
+                }
 
-            if (sessao != null) {
-                sessionRegistry.removeSessionInformation(
-                        sessao.getId()
-                );
+                // A autenticação do EntreCausas usa o e-mail.
+                String email = autenticacao.getName();
 
-                sessao.invalidate();
-            }
+                Optional<Usuario> resultado = usuarioRepository.findByEmail(email);
 
-            SecurityContextHolder.clearContext();
+                // Bloqueia contas inexistentes ou desativadas.
+                if (resultado.isEmpty() || !resultado.get().isAtivo()) {
 
-            response.setStatus(
-                    HttpServletResponse.SC_UNAUTHORIZED
-            );
-            response.setContentType("application/json");
-            response.setCharacterEncoding("UTF-8");
+                        HttpSession sessao = request.getSession(false);
 
-            response.getWriter().write(
-                    "{\"codigo\":\"CONTA_DESATIVADA\","
-                    + "\"mensagem\":\"Sua conta não está mais ativa.\"}"
-            );
+                        if (sessao != null) {
+                                sessionRegistry.removeSessionInformation(
+                                                sessao.getId());
 
-            return;
+                                sessao.invalidate();
+                        }
+
+                        SecurityContextHolder.clearContext();
+
+                        response.setStatus(
+                                        HttpServletResponse.SC_UNAUTHORIZED);
+                        response.setContentType("application/json");
+                        response.setCharacterEncoding("UTF-8");
+
+                        response.getWriter().write(
+                                        "{\"codigo\":\"CONTA_DESATIVADA\","
+                                                        + "\"mensagem\":\"Sua conta não está mais ativa.\"}");
+
+                        return;
+                }
+
+                filterChain.doFilter(request, response);
         }
-
-        filterChain.doFilter(request, response);
-    }
 }

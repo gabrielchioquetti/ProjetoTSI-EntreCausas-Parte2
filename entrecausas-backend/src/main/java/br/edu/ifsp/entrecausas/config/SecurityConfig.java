@@ -53,8 +53,7 @@ public class SecurityConfig {
 
     // Retorna HTTP 401 quando uma sessão foi expirada.
     @Bean
-    public SessionInformationExpiredStrategy
-            sessionInformationExpiredStrategy() {
+    public SessionInformationExpiredStrategy sessionInformationExpiredStrategy() {
 
         return event -> {
             HttpServletResponse response = event.getResponse();
@@ -165,7 +164,6 @@ public class SecurityConfig {
                     "/api/auditoria",
                     "/api/auditoria/**"
                 ).denyAll()
-
 
                 // A listagem completa de usuários
                 // é exclusiva do MASTER.
@@ -314,6 +312,12 @@ public class SecurityConfig {
                     "/api/imagens",
                     "/api/imagens/**"
                 ).denyAll()
+
+                // Permite enviar mensagens pelo Fale Conosco sem login.
+                .requestMatchers(
+                    HttpMethod.POST,
+                    "/api/contato"
+                ).permitAll()
 
                 // Os demais endpoints exigem autenticação.
                 .anyRequest().authenticated()

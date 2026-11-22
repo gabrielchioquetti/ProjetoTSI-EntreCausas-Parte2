@@ -13,11 +13,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import jakarta.validation.Valid;
-
 import br.edu.ifsp.entrecausas.dto.DescricaoRequestDTO;
 import br.edu.ifsp.entrecausas.dto.DescricaoResponseDTO;
 import br.edu.ifsp.entrecausas.service.DescricaoService;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/descricoes")
@@ -37,12 +36,11 @@ public class DescricaoController {
     public ResponseEntity<DescricaoResponseDTO> cadastrar(
             @Valid @RequestBody DescricaoRequestDTO dto) {
 
-        DescricaoResponseDTO response =
-            descricaoService.cadastrar(dto);
+        DescricaoResponseDTO response = descricaoService.cadastrar(dto);
 
         return ResponseEntity
-            .status(HttpStatus.CREATED)
-            .body(response);
+                .status(HttpStatus.CREATED)
+                .body(response);
     }
 
     // Endpoint GET: Retorna todas as descrições registradas.
@@ -50,8 +48,7 @@ public class DescricaoController {
     public ResponseEntity<List<DescricaoResponseDTO>> listar() {
 
         return ResponseEntity.ok(
-            descricaoService.listarTodas()
-        );
+                descricaoService.listarTodas());
     }
 
     // Endpoint GET: Busca uma descrição por ID.
@@ -60,8 +57,7 @@ public class DescricaoController {
             @PathVariable Long id) {
 
         return ResponseEntity.ok(
-            descricaoService.buscarPorId(id)
-        );
+                descricaoService.buscarPorId(id));
     }
 
     // Endpoint GET: Retorna as descrições de uma ONG.
@@ -70,8 +66,7 @@ public class DescricaoController {
             @PathVariable Long idOng) {
 
         return ResponseEntity.ok(
-            descricaoService.listarPorOng(idOng)
-        );
+                descricaoService.listarPorOng(idOng));
     }
 
     // Endpoint PUT: Atualiza uma descrição existente.
@@ -80,8 +75,7 @@ public class DescricaoController {
             @PathVariable Long id,
             @Valid @RequestBody DescricaoRequestDTO dto) {
 
-        DescricaoResponseDTO response =
-            descricaoService.atualizar(id, dto);
+        DescricaoResponseDTO response = descricaoService.atualizar(id, dto);
 
         return ResponseEntity.ok(response);
     }

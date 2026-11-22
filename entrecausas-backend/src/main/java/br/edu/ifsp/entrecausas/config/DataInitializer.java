@@ -1,17 +1,6 @@
 package br.edu.ifsp.entrecausas.config;
 
-import br.edu.ifsp.entrecausas.entity.Categoria;
-import br.edu.ifsp.entrecausas.entity.Funcao;
-import br.edu.ifsp.entrecausas.entity.StatusSolicitacao;
-import br.edu.ifsp.entrecausas.entity.Usuario;
-
-import br.edu.ifsp.entrecausas.repository.CategoriaRepository;
-import br.edu.ifsp.entrecausas.repository.FuncaoRepository;
-import br.edu.ifsp.entrecausas.repository.StatusSolicitacaoRepository;
-import br.edu.ifsp.entrecausas.repository.UsuarioRepository;
-
-import br.edu.ifsp.entrecausas.security.AesCryptoUtil;
-import br.edu.ifsp.entrecausas.security.HmacCryptoUtil;
+import java.util.List;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
@@ -19,7 +8,16 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-import java.util.List;
+import br.edu.ifsp.entrecausas.entity.Categoria;
+import br.edu.ifsp.entrecausas.entity.Funcao;
+import br.edu.ifsp.entrecausas.entity.StatusSolicitacao;
+import br.edu.ifsp.entrecausas.entity.Usuario;
+import br.edu.ifsp.entrecausas.repository.CategoriaRepository;
+import br.edu.ifsp.entrecausas.repository.FuncaoRepository;
+import br.edu.ifsp.entrecausas.repository.StatusSolicitacaoRepository;
+import br.edu.ifsp.entrecausas.repository.UsuarioRepository;
+import br.edu.ifsp.entrecausas.security.AesCryptoUtil;
+import br.edu.ifsp.entrecausas.security.HmacCryptoUtil;
 
 @Configuration
 public class DataInitializer {
@@ -71,8 +69,7 @@ public class DataInitializer {
                     hmacCryptoUtil,
                     senhaInicialMaster,
                     cpfInicialMaster,
-                    telefoneInicialMaster
-            );
+                    telefoneInicialMaster);
         };
     }
 
@@ -114,14 +111,12 @@ public class DataInitializer {
             String cpfInicialMaster,
             String telefoneInicialMaster) {
 
-        List<Usuario> masters =
-                usuarioRepository.findByFuncaoNomeIgnoreCase("MASTER");
+        List<Usuario> masters = usuarioRepository.findByFuncaoNomeIgnoreCase("MASTER");
 
         // Não permite continuar com múltiplas contas MASTER.
         if (masters.size() > 1) {
             throw new IllegalStateException(
-                    "Foram encontradas múltiplas contas MASTER."
-            );
+                    "Foram encontradas múltiplas contas MASTER.");
         }
 
         // Preserva a conta MASTER existente sem alterar seus dados.
@@ -133,8 +128,7 @@ public class DataInitializer {
         if (usuarioRepository.existsByEmail(EMAIL_MASTER)) {
             throw new IllegalStateException(
                     "O e-mail reservado ao MASTER já está cadastrado " +
-                    "em outra conta. Verifique o cadastro antes de continuar."
-            );
+                            "em outra conta. Verifique o cadastro antes de continuar.");
         }
 
         // Exige as credenciais para criar o primeiro MASTER.
@@ -144,8 +138,7 @@ public class DataInitializer {
 
             throw new IllegalStateException(
                     "Configure MASTER_PASSWORD com pelo menos " +
-                    "12 caracteres para criar o MASTER."
-            );
+                            "12 caracteres para criar o MASTER.");
         }
 
         if (cpfInicialMaster == null
@@ -154,8 +147,7 @@ public class DataInitializer {
                 || telefoneInicialMaster.isBlank()) {
 
             throw new IllegalStateException(
-                    "Configure MASTER_CPF e MASTER_TELEFONE."
-            );
+                    "Configure MASTER_CPF e MASTER_TELEFONE.");
         }
 
         String cpf = cpfInicialMaster.replaceAll("\\D", "");
@@ -165,8 +157,7 @@ public class DataInitializer {
                 || !telefone.matches("\\d{10,11}")) {
 
             throw new IllegalStateException(
-                    "MASTER_CPF ou MASTER_TELEFONE inválido."
-            );
+                    "MASTER_CPF ou MASTER_TELEFONE inválido.");
         }
 
         String cpfHash = hmacCryptoUtil.gerarHash(cpf);
@@ -177,14 +168,12 @@ public class DataInitializer {
 
             throw new IllegalStateException(
                     "CPF ou telefone inicial do MASTER " +
-                    "já está cadastrado."
-            );
+                            "já está cadastrado.");
         }
 
         Funcao funcaoMaster = funcaoRepository.findByNome("MASTER")
                 .orElseThrow(() -> new IllegalStateException(
-                        "A função MASTER não foi encontrada."
-                ));
+                        "A função MASTER não foi encontrada."));
 
         Usuario master = new Usuario();
 

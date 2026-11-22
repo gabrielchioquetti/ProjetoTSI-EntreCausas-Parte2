@@ -1,17 +1,17 @@
 package br.edu.ifsp.entrecausas.security;
 
-import jakarta.annotation.PostConstruct;
-
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
+import java.nio.charset.StandardCharsets;
+import java.security.SecureRandom;
+import java.util.Base64;
 
 import javax.crypto.Cipher;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
-import java.nio.charset.StandardCharsets;
-import java.security.SecureRandom;
-import java.util.Base64;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
+import jakarta.annotation.PostConstruct;
 
 @Component
 public class AesCryptoUtil {
@@ -20,8 +20,7 @@ public class AesCryptoUtil {
     private static final String ALGORITHM = "AES";
 
     // AES-GCM fornece confidencialidade e integridade.
-    private static final String TRANSFORMATION =
-            "AES/GCM/NoPadding";
+    private static final String TRANSFORMATION = "AES/GCM/NoPadding";
 
     // Tamanho do IV utilizado pelo GCM.
     private static final int IV_SIZE = 12;
@@ -51,17 +50,14 @@ public class AesCryptoUtil {
 
         if (secretKey == null || secretKey.isBlank()) {
             throw new IllegalStateException(
-                "A chave AES não foi configurada."
-            );
+                    "A chave AES não foi configurada.");
         }
 
-        byte[] chave =
-            secretKey.getBytes(StandardCharsets.UTF_8);
+        byte[] chave = secretKey.getBytes(StandardCharsets.UTF_8);
 
         if (chave.length != KEY_SIZE) {
             throw new IllegalStateException(
-                "A chave AES deve possuir exatamente 32 bytes."
-            );
+                    "A chave AES deve possuir exatamente 32 bytes.");
         }
     }
 
@@ -77,48 +73,38 @@ public class AesCryptoUtil {
             byte[] iv = new byte[IV_SIZE];
             secureRandom.nextBytes(iv);
 
-            SecretKeySpec keySpec =
-                new SecretKeySpec(
+            SecretKeySpec keySpec = new SecretKeySpec(
                     secretKey.getBytes(StandardCharsets.UTF_8),
-                    ALGORITHM
-                );
+                    ALGORITHM);
 
-            GCMParameterSpec gcmSpec =
-                new GCMParameterSpec(TAG_SIZE, iv);
+            GCMParameterSpec gcmSpec = new GCMParameterSpec(TAG_SIZE, iv);
 
-            Cipher cipher =
-                Cipher.getInstance(TRANSFORMATION);
+            Cipher cipher = Cipher.getInstance(TRANSFORMATION);
 
             cipher.init(
-                Cipher.ENCRYPT_MODE,
-                keySpec,
-                gcmSpec
-            );
+                    Cipher.ENCRYPT_MODE,
+                    keySpec,
+                    gcmSpec);
 
-            byte[] encrypted =
-                cipher.doFinal(
-                    value.getBytes(StandardCharsets.UTF_8)
-                );
+            byte[] encrypted = cipher.doFinal(
+                    value.getBytes(StandardCharsets.UTF_8));
 
             // Junta IV + conteúdo criptografado.
-            byte[] resultado =
-                new byte[IV_SIZE + encrypted.length];
+            byte[] resultado = new byte[IV_SIZE + encrypted.length];
 
             System.arraycopy(
-                iv,
-                0,
-                resultado,
-                0,
-                IV_SIZE
-            );
+                    iv,
+                    0,
+                    resultado,
+                    0,
+                    IV_SIZE);
 
             System.arraycopy(
-                encrypted,
-                0,
-                resultado,
-                IV_SIZE,
-                encrypted.length
-            );
+                    encrypted,
+                    0,
+                    resultado,
+                    IV_SIZE,
+                    encrypted.length);
 
             // Base64 facilita o armazenamento no banco.
             return Base64.getEncoder()
@@ -127,9 +113,8 @@ public class AesCryptoUtil {
         } catch (Exception e) {
 
             throw new IllegalStateException(
-                "Erro ao criptografar dado sensível.",
-                e
-            );
+                    "Erro ao criptografar dado sensível.",
+                    e);
         }
     }
 
@@ -141,73 +126,59 @@ public class AesCryptoUtil {
         }
 
         try {
-            byte[] dados =
-                Base64.getDecoder()
+            byte[] dados = Base64.getDecoder()
                     .decode(encryptedValue);
 
             // Verifica se existe espaço suficiente para o IV.
             if (dados.length <= IV_SIZE) {
                 throw new IllegalArgumentException(
-                    "Valor criptografado inválido."
-                );
+                        "Valor criptografado inválido.");
             }
 
             // Recupera o IV armazenado no início do valor.
-            byte[] iv =
-                new byte[IV_SIZE];
+            byte[] iv = new byte[IV_SIZE];
 
             System.arraycopy(
-                dados,
-                0,
-                iv,
-                0,
-                IV_SIZE
-            );
+                    dados,
+                    0,
+                    iv,
+                    0,
+                    IV_SIZE);
 
             // Recupera o conteúdo criptografado.
-            byte[] encrypted =
-                new byte[dados.length - IV_SIZE];
+            byte[] encrypted = new byte[dados.length - IV_SIZE];
 
             System.arraycopy(
-                dados,
-                IV_SIZE,
-                encrypted,
-                0,
-                encrypted.length
-            );
+                    dados,
+                    IV_SIZE,
+                    encrypted,
+                    0,
+                    encrypted.length);
 
-            SecretKeySpec keySpec =
-                new SecretKeySpec(
+            SecretKeySpec keySpec = new SecretKeySpec(
                     secretKey.getBytes(StandardCharsets.UTF_8),
-                    ALGORITHM
-                );
+                    ALGORITHM);
 
-            GCMParameterSpec gcmSpec =
-                new GCMParameterSpec(TAG_SIZE, iv);
+            GCMParameterSpec gcmSpec = new GCMParameterSpec(TAG_SIZE, iv);
 
-            Cipher cipher =
-                Cipher.getInstance(TRANSFORMATION);
+            Cipher cipher = Cipher.getInstance(TRANSFORMATION);
 
             cipher.init(
-                Cipher.DECRYPT_MODE,
-                keySpec,
-                gcmSpec
-            );
+                    Cipher.DECRYPT_MODE,
+                    keySpec,
+                    gcmSpec);
 
-            byte[] decrypted =
-                cipher.doFinal(encrypted);
+            byte[] decrypted = cipher.doFinal(encrypted);
 
             return new String(
-                decrypted,
-                StandardCharsets.UTF_8
-            );
+                    decrypted,
+                    StandardCharsets.UTF_8);
 
         } catch (Exception e) {
 
             throw new IllegalStateException(
-                "Erro ao descriptografar dado sensível.",
-                e
-            );
+                    "Erro ao descriptografar dado sensível.",
+                    e);
         }
     }
 }

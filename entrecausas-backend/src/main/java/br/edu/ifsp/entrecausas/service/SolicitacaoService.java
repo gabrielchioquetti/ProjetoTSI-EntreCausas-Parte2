@@ -7,9 +7,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.LockModeType;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -19,17 +16,13 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.server.ResponseStatusException;
 
-import tools.jackson.core.JacksonException;
-import tools.jackson.databind.ObjectMapper;
-
-import br.edu.ifsp.entrecausas.dto.OngEdicaoDadosDTO;
 import br.edu.ifsp.entrecausas.dto.OngDetalhesAdminResponseDTO;
+import br.edu.ifsp.entrecausas.dto.OngEdicaoDadosDTO;
 import br.edu.ifsp.entrecausas.dto.SolicitacaoAnaliseDTO;
 import br.edu.ifsp.entrecausas.dto.SolicitacaoComparacaoDTO;
 import br.edu.ifsp.entrecausas.dto.SolicitacaoCriacaoDTO;
 import br.edu.ifsp.entrecausas.dto.SolicitacaoResponseDTO;
 import br.edu.ifsp.entrecausas.dto.StatusSolicitacaoResponseDTO;
-
 import br.edu.ifsp.entrecausas.entity.Categoria;
 import br.edu.ifsp.entrecausas.entity.Descricao;
 import br.edu.ifsp.entrecausas.entity.Endereco;
@@ -41,10 +34,8 @@ import br.edu.ifsp.entrecausas.entity.OngEdicaoPendente;
 import br.edu.ifsp.entrecausas.entity.Solicitacao;
 import br.edu.ifsp.entrecausas.entity.StatusSolicitacao;
 import br.edu.ifsp.entrecausas.entity.Usuario;
-
 import br.edu.ifsp.entrecausas.exception.ConflitoException;
 import br.edu.ifsp.entrecausas.exception.RecursoNaoEncontradoException;
-
 import br.edu.ifsp.entrecausas.repository.CategoriaRepository;
 import br.edu.ifsp.entrecausas.repository.ImagemEdicaoPendenteRepository;
 import br.edu.ifsp.entrecausas.repository.OngEdicaoPendenteRepository;
@@ -52,9 +43,12 @@ import br.edu.ifsp.entrecausas.repository.OngRepository;
 import br.edu.ifsp.entrecausas.repository.SolicitacaoRepository;
 import br.edu.ifsp.entrecausas.repository.StatusSolicitacaoRepository;
 import br.edu.ifsp.entrecausas.repository.UsuarioRepository;
-
 import br.edu.ifsp.entrecausas.security.AesCryptoUtil;
 import br.edu.ifsp.entrecausas.security.HmacCryptoUtil;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 // Camada de serviço responsável pelo fluxo
 // de moderação e análise de solicitações.
@@ -95,8 +89,7 @@ public class SolicitacaoService {
             ObjectMapper objectMapper,
             EntityManager entityManager,
             OngService ongService,
-            EmailService emailService
-        ) {
+            EmailService emailService) {
 
         this.solicitacaoRepository = solicitacaoRepository;
         this.ongRepository = ongRepository;
@@ -117,24 +110,23 @@ public class SolicitacaoService {
         this.emailService = emailService;
     }
 
-    /*  
-        Registra uma nova solicitação.
-        O cadastro, a edição e a exclusão de ONGs devem utilizar os fluxos específicos do OngService.
-        Impede a criação direta de solicitações sem validação.
-    */
+    /*
+     * Registra uma nova solicitação.
+     * O cadastro, a edição e a exclusão de ONGs devem utilizar os fluxos
+     * específicos do OngService.
+     * Impede a criação direta de solicitações sem validação.
+     */
     @Transactional
     public SolicitacaoResponseDTO criar(
             SolicitacaoCriacaoDTO dto) {
 
         throw new ResponseStatusException(
-            HttpStatus.FORBIDDEN,
-            "A criação direta de solicitações não é permitida. "
-            + "Utilize os serviços de cadastro, edição "
-            + "ou encerramento de ONG."
-        );
+                HttpStatus.FORBIDDEN,
+                "A criação direta de solicitações não é permitida. "
+                        + "Utilize os serviços de cadastro, edição "
+                        + "ou encerramento de ONG.");
     }
 
-    
     // Impede ativar uma ONG quando outra organização
     // do responsável ainda não teve encerramento aprovado.
     private void validarAusenciaDeOutraOng(
@@ -142,9 +134,8 @@ public class SolicitacaoService {
             Long idOngAtual) {
 
         List<Ong> outrasOngs = ongRepository
-            .findByUsuarioIdUsuarioOrderByIdOngDesc(
-                idResponsavel
-            );
+                .findByUsuarioIdUsuarioOrderByIdOngDesc(
+                        idResponsavel);
 
         for (Ong outraOng : outrasOngs) {
 
@@ -152,28 +143,22 @@ public class SolicitacaoService {
                 continue;
             }
 
-            boolean encerramentoAprovado =
-                solicitacaoRepository
+            boolean encerramentoAprovado = solicitacaoRepository
                     .findByOngIdOng(outraOng.getIdOng())
                     .stream()
-                    .anyMatch(item ->
-                        "EXCLUSAO".equalsIgnoreCase(
-                            item.getTipoSolicitacao()
-                        )
-                        && "APROVADO".equalsIgnoreCase(
-                            item.getStatus().getNome()
-                        )
-                    );
+                    .anyMatch(item -> "EXCLUSAO".equalsIgnoreCase(
+                            item.getTipoSolicitacao())
+                            && "APROVADO".equalsIgnoreCase(
+                                    item.getStatus().getNome()));
 
             if (outraOng.isAtiva() || !encerramentoAprovado) {
                 throw new ConflitoException(
-                    "O usuário possui outra ONG "
-                    + "sem encerramento aprovado."
-                );
+                        "O usuário possui outra ONG "
+                                + "sem encerramento aprovado.");
             }
         }
     }
-    
+
     // Processa a análise da solicitação.
     // O administrador é identificado pela sessão autenticada.
     @Transactional
@@ -183,170 +168,131 @@ public class SolicitacaoService {
             String emailAdministrador) {
 
         Usuario administrador = usuarioRepository
-            .findByEmail(emailAdministrador)
-            .orElseThrow(() ->
-                new RecursoNaoEncontradoException(
-                    "Usuário autenticado não encontrado."
-                )
-            );
+                .findByEmail(emailAdministrador)
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "Usuário autenticado não encontrado."));
 
         validarAdministrador(administrador);
 
         Solicitacao solicitacao = buscarSolicitacao(idSolicitacao);
 
         Long idOng = solicitacao.getOng().getIdOng();
-        Long idResponsavel =
-            solicitacao.getOng().getUsuario().getIdUsuario();
+        Long idResponsavel = solicitacao.getOng().getUsuario().getIdUsuario();
 
         // Mantém a ordem de bloqueio: usuário, ONG, solicitação.
         Usuario responsavel = entityManager.find(
-            Usuario.class,
-            idResponsavel,
-            LockModeType.PESSIMISTIC_WRITE
-        );
+                Usuario.class,
+                idResponsavel,
+                LockModeType.PESSIMISTIC_WRITE);
 
         if (responsavel == null) {
             throw new RecursoNaoEncontradoException(
-                "Responsável pela ONG não encontrado."
-            );
+                    "Responsável pela ONG não encontrado.");
         }
 
         Ong ong = entityManager.find(
-            Ong.class,
-            idOng,
-            LockModeType.PESSIMISTIC_WRITE
-        );
+                Ong.class,
+                idOng,
+                LockModeType.PESSIMISTIC_WRITE);
 
         if (ong == null) {
             throw new RecursoNaoEncontradoException(
-                "ONG vinculada à solicitação não encontrada."
-            );
+                    "ONG vinculada à solicitação não encontrada.");
         }
 
         entityManager.refresh(
-            solicitacao,
-            LockModeType.PESSIMISTIC_WRITE
-        );
+                solicitacao,
+                LockModeType.PESSIMISTIC_WRITE);
 
         validarSolicitacaoPendente(solicitacao);
 
-        StatusSolicitacao novoStatus =
-            buscarStatus(dto.idStatus());
+        StatusSolicitacao novoStatus = buscarStatus(dto.idStatus());
 
         String nomeStatus = novoStatus.getNome().toUpperCase();
 
         if (!nomeStatus.equals("APROVADO")
                 && !nomeStatus.equals("REJEITADO")) {
             throw new ConflitoException(
-                "A análise deve resultar em APROVADO ou REJEITADO."
-            );
+                    "A análise deve resultar em APROVADO ou REJEITADO.");
         }
 
         validarMotivoRejeicao(
-            nomeStatus,
-            dto.motivoRejeicao()
-        );
+                nomeStatus,
+                dto.motivoRejeicao());
 
-        String tipoSolicitacao =
-            solicitacao.getTipoSolicitacao();
+        String tipoSolicitacao = solicitacao.getTipoSolicitacao();
 
-        boolean cadastro =
-            tipoSolicitacao == null
-            || "CADASTRO".equalsIgnoreCase(tipoSolicitacao);
+        boolean cadastro = tipoSolicitacao == null
+                || "CADASTRO".equalsIgnoreCase(tipoSolicitacao);
 
-        boolean edicao =
-            "EDICAO".equalsIgnoreCase(tipoSolicitacao);
+        boolean edicao = "EDICAO".equalsIgnoreCase(tipoSolicitacao);
 
-        boolean exclusao =
-            "EXCLUSAO".equalsIgnoreCase(tipoSolicitacao);
+        boolean exclusao = "EXCLUSAO".equalsIgnoreCase(tipoSolicitacao);
 
         boolean aprovado = "APROVADO".equals(nomeStatus);
 
-        List<Solicitacao> historico =
-            solicitacaoRepository.findByOngIdOng(idOng);
+        List<Solicitacao> historico = solicitacaoRepository.findByOngIdOng(idOng);
 
         boolean cadastroRejeitado = historico.stream()
-            .anyMatch(item ->
-                (item.getTipoSolicitacao() == null
-                    || "CADASTRO".equalsIgnoreCase(
-                        item.getTipoSolicitacao()
-                    ))
-                && "REJEITADO".equalsIgnoreCase(
-                    item.getStatus().getNome()
-                )
-            );
+                .anyMatch(item -> (item.getTipoSolicitacao() == null
+                        || "CADASTRO".equalsIgnoreCase(
+                                item.getTipoSolicitacao()))
+                        && "REJEITADO".equalsIgnoreCase(
+                                item.getStatus().getNome()));
 
         boolean cadastroAprovado = historico.stream()
-            .anyMatch(item ->
-                (item.getTipoSolicitacao() == null
-                    || "CADASTRO".equalsIgnoreCase(
-                        item.getTipoSolicitacao()
-                    ))
-                && "APROVADO".equalsIgnoreCase(
-                    item.getStatus().getNome()
-                )
-            );
+                .anyMatch(item -> (item.getTipoSolicitacao() == null
+                        || "CADASTRO".equalsIgnoreCase(
+                                item.getTipoSolicitacao()))
+                        && "APROVADO".equalsIgnoreCase(
+                                item.getStatus().getNome()));
 
         boolean correcaoAprovada = historico.stream()
-            .anyMatch(item ->
-                "EDICAO".equalsIgnoreCase(
-                    item.getTipoSolicitacao()
-                )
-                && "APROVADO".equalsIgnoreCase(
-                    item.getStatus().getNome()
-                )
-            );
+                .anyMatch(item -> "EDICAO".equalsIgnoreCase(
+                        item.getTipoSolicitacao())
+                        && "APROVADO".equalsIgnoreCase(
+                                item.getStatus().getNome()));
 
         boolean encerramentoAprovado = historico.stream()
-            .anyMatch(item ->
-                "EXCLUSAO".equalsIgnoreCase(
-                    item.getTipoSolicitacao()
-                )
-                && "APROVADO".equalsIgnoreCase(
-                    item.getStatus().getNome()
-                )
-            );
+                .anyMatch(item -> "EXCLUSAO".equalsIgnoreCase(
+                        item.getTipoSolicitacao())
+                        && "APROVADO".equalsIgnoreCase(
+                                item.getStatus().getNome()));
 
         // Uma ONG encerrada não pode ser reativada.
         if (encerramentoAprovado) {
             throw new ConflitoException(
-                "Esta ONG já teve seu encerramento aprovado."
-            );
+                    "Esta ONG já teve seu encerramento aprovado.");
         }
 
         // Identifica um cadastro rejeitado ainda não regularizado.
-        boolean cadastroRejeitadoNaoRegularizado =
-            cadastroRejeitado
-            && !cadastroAprovado
-            && !correcaoAprovada;
+        boolean cadastroRejeitadoNaoRegularizado = cadastroRejeitado
+                && !cadastroAprovado
+                && !correcaoAprovada;
 
         if (edicao) {
 
-            boolean correcaoCadastro =
-                !ong.isAtiva()
-                && cadastroRejeitadoNaoRegularizado;
+            boolean correcaoCadastro = !ong.isAtiva()
+                    && cadastroRejeitadoNaoRegularizado;
 
             if (!ong.isAtiva() && !correcaoCadastro) {
                 throw new ConflitoException(
-                    "Não é possível analisar a edição "
-                    + "de uma ONG inativa."
-                );
+                        "Não é possível analisar a edição "
+                                + "de uma ONG inativa.");
             }
 
             if (correcaoCadastro && aprovado) {
                 validarAusenciaDeOutraOng(
-                    responsavel.getIdUsuario(),
-                    idOng
-                );
+                        responsavel.getIdUsuario(),
+                        idOng);
             }
 
             // Aplica os dados aprovados ou descarta
             // os arquivos temporários de uma edição rejeitada.
             analisarEdicao(
-                solicitacao,
-                ong,
-                nomeStatus
-            );
+                    solicitacao,
+                    ong,
+                    nomeStatus);
 
             if (correcaoCadastro && aprovado) {
                 ong.setAtiva(true);
@@ -358,14 +304,12 @@ public class SolicitacaoService {
 
                 if (ong.isAtiva()) {
                     throw new ConflitoException(
-                        "Esta ONG já está ativa."
-                    );
+                            "Esta ONG já está ativa.");
                 }
 
                 validarAusenciaDeOutraOng(
-                    responsavel.getIdUsuario(),
-                    idOng
-                );
+                        responsavel.getIdUsuario(),
+                        idOng);
 
                 ong.setAtiva(true);
             }
@@ -374,15 +318,13 @@ public class SolicitacaoService {
 
         } else if (exclusao) {
 
-            boolean podeEncerrar =
-                ong.isAtiva()
-                || cadastroRejeitadoNaoRegularizado;
+            boolean podeEncerrar = ong.isAtiva()
+                    || cadastroRejeitadoNaoRegularizado;
 
             if (!podeEncerrar) {
                 throw new ConflitoException(
-                    "Somente uma ONG ativa ou um cadastro "
-                    + "rejeitado pode ser encerrado."
-                );
+                        "Somente uma ONG ativa ou um cadastro "
+                                + "rejeitado pode ser encerrado.");
             }
 
             if (aprovado) {
@@ -394,8 +336,7 @@ public class SolicitacaoService {
 
         } else {
             throw new ConflitoException(
-                "Tipo de solicitação não reconhecido."
-            );
+                    "Tipo de solicitação não reconhecido.");
         }
 
         solicitacao.setAdministrador(administrador);
@@ -404,8 +345,7 @@ public class SolicitacaoService {
 
         if ("REJEITADO".equals(nomeStatus)) {
             solicitacao.setMotivoRejeicao(
-                dto.motivoRejeicao().trim()
-            );
+                    dto.motivoRejeicao().trim());
         } else {
             solicitacao.setMotivoRejeicao(null);
         }
@@ -423,44 +363,40 @@ public class SolicitacaoService {
 
         // Envia a notificação somente após a confirmação da transação.
         TransactionSynchronizationManager.registerSynchronization(
-            new TransactionSynchronization() {
+                new TransactionSynchronization() {
 
-                @Override
-                public void afterCommit() {
+                    @Override
+                    public void afterCommit() {
 
-                    try {
+                        try {
 
-                        if ("APROVADO".equals(statusNotificacao)) {
+                            if ("APROVADO".equals(statusNotificacao)) {
 
-                            emailService.enviarAprovacao(
-                                nomeResponsavel,
-                                emailResponsavel,
-                                nomeOng,
-                                tipoNotificacao
-                            );
+                                emailService.enviarAprovacao(
+                                        nomeResponsavel,
+                                        emailResponsavel,
+                                        nomeOng,
+                                        tipoNotificacao);
 
-                        } else {
+                            } else {
 
-                            emailService.enviarRejeicao(
-                                nomeResponsavel,
-                                emailResponsavel,
-                                nomeOng,
-                                tipoNotificacao,
-                                motivoNotificacao
-                            );
+                                emailService.enviarRejeicao(
+                                        nomeResponsavel,
+                                        emailResponsavel,
+                                        nomeOng,
+                                        tipoNotificacao,
+                                        motivoNotificacao);
+                            }
+
+                        } catch (RuntimeException erro) {
+
+                            log.error(
+                                    "Falha ao notificar o responsável pela solicitação {}.",
+                                    idSolicitacao,
+                                    erro);
                         }
-
-                    } catch (RuntimeException erro) {
-
-                        log.error(
-                            "Falha ao notificar o responsável pela solicitação {}.",
-                            idSolicitacao,
-                            erro
-                        );
                     }
-                }
-            }
-        );
+                });
 
         return resposta;
     }
@@ -473,57 +409,43 @@ public class SolicitacaoService {
             String emailAdministrador) {
 
         // Busca o usuário autenticado.
-        Usuario administrador =
-            usuarioRepository.findByEmail(emailAdministrador)
-                .orElseThrow(() ->
-                    new RecursoNaoEncontradoException(
-                        "Usuário autenticado não encontrado."
-                    )
-                );
+        Usuario administrador = usuarioRepository.findByEmail(emailAdministrador)
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "Usuário autenticado não encontrado."));
 
         // Confirma a permissão administrativa.
         validarAdministrador(administrador);
 
         // Busca a solicitação.
-        Solicitacao solicitacao =
-            buscarSolicitacao(idSolicitacao);
+        Solicitacao solicitacao = buscarSolicitacao(idSolicitacao);
 
         // Apenas solicitações de edição possuem comparação.
         if (!"EDICAO".equalsIgnoreCase(
                 solicitacao.getTipoSolicitacao())) {
 
             throw new ConflitoException(
-                "Esta solicitação não é uma edição de ONG."
-            );
+                    "Esta solicitação não é uma edição de ONG.");
         }
 
         // Recupera o registro de edição pendente.
-        OngEdicaoPendente edicao =
-            ongEdicaoPendenteRepository
+        OngEdicaoPendente edicao = ongEdicaoPendenteRepository
                 .findBySolicitacaoIdSolicitacao(idSolicitacao)
-                .orElseThrow(() ->
-                    new RecursoNaoEncontradoException(
-                        "Os dados da edição não foram encontrados."
-                    )
-                );
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "Os dados da edição não foram encontrados."));
 
         // Descriptografa e interpreta os dados propostos.
-        OngEdicaoDadosDTO dadosPropostos =
-            recuperarDadosEdicao(edicao);
+        OngEdicaoDadosDTO dadosPropostos = recuperarDadosEdicao(edicao);
 
         // Busca os dados atualmente cadastrados da ONG.
-        OngDetalhesAdminResponseDTO dadosAtuais =
-            ongService.buscarDetalhesAdmin(
-                solicitacao.getOng().getIdOng()
-            );
+        OngDetalhesAdminResponseDTO dadosAtuais = ongService.buscarDetalhesAdmin(
+                solicitacao.getOng().getIdOng());
 
         // Retorna os dados atuais e propostos.
         return new SolicitacaoComparacaoDTO(
-            solicitacao.getIdSolicitacao(),
-            solicitacao.getOng().getIdOng(),
-            dadosAtuais,
-            dadosPropostos
-        );
+                solicitacao.getIdSolicitacao(),
+                solicitacao.getOng().getIdOng(),
+                dadosAtuais,
+                dadosPropostos);
     }
 
     // Analisa os dados propostos para edição.
@@ -533,35 +455,27 @@ public class SolicitacaoService {
             String nomeStatus) {
 
         // Recupera os arquivos vinculados à solicitação analisada.
-        List<ImagemEdicaoPendente> imagensPendentes =
-            imagemEdicaoPendenteRepository
+        List<ImagemEdicaoPendente> imagensPendentes = imagemEdicaoPendenteRepository
                 .findBySolicitacaoIdSolicitacao(
-                    solicitacao.getIdSolicitacao()
-                );
+                        solicitacao.getIdSolicitacao());
 
         if ("APROVADO".equals(nomeStatus)) {
 
             // Recupera os dados propostos.
-            OngEdicaoPendente edicao =
-                ongEdicaoPendenteRepository
+            OngEdicaoPendente edicao = ongEdicaoPendenteRepository
                     .findBySolicitacaoIdSolicitacao(
-                        solicitacao.getIdSolicitacao()
-                    )
-                    .orElseThrow(() ->
-                        new RecursoNaoEncontradoException(
-                            "Os dados da edição não foram encontrados."
-                        )
-                    );
+                            solicitacao.getIdSolicitacao())
+                    .orElseThrow(() -> new RecursoNaoEncontradoException(
+                            "Os dados da edição não foram encontrados."));
 
             // Descriptografa a proposta.
             OngEdicaoDadosDTO dados = recuperarDadosEdicao(edicao);
 
             // Confere os arquivos e seus vínculos.
             validarImagensPropostas(
-                ong,
-                dados,
-                imagensPendentes
-            );
+                    ong,
+                    dados,
+                    imagensPendentes);
 
             // Aplica somente as alterações aprovadas.
             aplicarEdicao(ong, dados);
@@ -571,8 +485,8 @@ public class SolicitacaoService {
             // Rejeição: preserva os dados atuais da ONG.
             // Remove somente os arquivos desta solicitação.
             List<String> arquivosNovos = imagensPendentes.stream()
-                .map(imagemPendente -> imagemPendente.getNomeArquivo())
-                .toList();
+                    .map(imagemPendente -> imagemPendente.getNomeArquivo())
+                    .toList();
 
             // Exclui os arquivos físicos somente após o commit.
             registrarExclusaoAposCommit(arquivosNovos);
@@ -596,7 +510,8 @@ public class SolicitacaoService {
             return dados;
 
         } catch (JacksonException e) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Não foi possível interpretar os dados da edição.", e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Não foi possível interpretar os dados da edição.", e);
         }
     }
 
@@ -613,42 +528,38 @@ public class SolicitacaoService {
                 || dados.imagens().size() > 5) {
 
             throw new ConflitoException(
-                "A proposta deve conter de três a cinco imagens."
-            );
+                    "A proposta deve conter de três a cinco imagens.");
         }
 
         // Impede caminhos nulos ou duplicados.
-        Set<String> caminhosUnicos =
-            new HashSet<>(dados.imagens());
+        Set<String> caminhosUnicos = new HashSet<>(dados.imagens());
 
         if (caminhosUnicos.contains(null)
                 || caminhosUnicos.size() != dados.imagens().size()) {
 
             throw new ConflitoException(
-                "A proposta contém imagens inválidas ou repetidas."
-            );
+                    "A proposta contém imagens inválidas ou repetidas.");
         }
 
         // Recupera as imagens permanentes da ONG.
         Set<String> caminhosAtuais = ong.getImagens()
-            .stream()
-            .map(imagem -> imagem.getCaminho())
-            .collect(Collectors.toSet());
+                .stream()
+                .map(imagem -> imagem.getCaminho())
+                .collect(Collectors.toSet());
 
         // Recupera os caminhos dos arquivos temporários
         // pertencentes exclusivamente à solicitação.
         Set<String> caminhosTemporarios = imagensPendentes
-            .stream()
-            .map(imagemPendente -> imagemPendente.getNomeArquivo())
-            .map(nomeArquivo -> "/uploads/" + nomeArquivo)
-            .collect(Collectors.toSet());
+                .stream()
+                .map(imagemPendente -> imagemPendente.getNomeArquivo())
+                .map(nomeArquivo -> "/uploads/" + nomeArquivo)
+                .collect(Collectors.toSet());
 
         // Impede vínculos temporários duplicados.
         if (caminhosTemporarios.size() != imagensPendentes.size()) {
 
             throw new ConflitoException(
-                "A solicitação possui vínculos de imagens inválidos."
-            );
+                    "A solicitação possui vínculos de imagens inválidos.");
         }
 
         // Impede que um arquivo temporário já esteja
@@ -658,8 +569,7 @@ public class SolicitacaoService {
                 caminhosTemporarios)) {
 
             throw new ConflitoException(
-                "Uma imagem temporária já pertence à ONG."
-            );
+                    "Uma imagem temporária já pertence à ONG.");
         }
 
         // Identifica as imagens novas informadas na proposta.
@@ -677,16 +587,14 @@ public class SolicitacaoService {
                     "^/uploads/[0-9a-fA-F-]{36}\\.(jpg|png)$")) {
 
                 throw new ConflitoException(
-                    "A proposta contém um caminho de imagem inválido."
-                );
+                        "A proposta contém um caminho de imagem inválido.");
             }
 
             // Confirma que o arquivo pertence à solicitação.
             if (!caminhosTemporarios.contains(caminho)) {
 
                 throw new ConflitoException(
-                    "Uma imagem nova não pertence a esta solicitação."
-                );
+                        "Uma imagem nova não pertence a esta solicitação.");
             }
 
             imagensNovasPropostas.add(caminho);
@@ -697,8 +605,7 @@ public class SolicitacaoService {
         if (!imagensNovasPropostas.equals(caminhosTemporarios)) {
 
             throw new ConflitoException(
-                "Os arquivos temporários não correspondem à proposta."
-            );
+                    "Os arquivos temporários não correspondem à proposta.");
         }
     }
 
@@ -718,8 +625,7 @@ public class SolicitacaoService {
 
         ong.setTelefone(aesCryptoUtil.encrypt(telefone));
         ong.setTelefoneHash(
-            hmacCryptoUtil.gerarHash(telefone)
-        );
+                hmacCryptoUtil.gerarHash(telefone));
 
         // CNPJ e responsável permanecem inalterados.
 
@@ -762,28 +668,24 @@ public class SolicitacaoService {
                 || dados.nome().trim().length() > 150) {
 
             throw new ConflitoException(
-                "O nome proposto para a ONG é inválido."
-            );
+                    "O nome proposto para a ONG é inválido.");
         }
 
         if (dados.telefone() == null
                 || !dados.telefone().matches("\\d{10,11}")) {
 
             throw new ConflitoException(
-                "O telefone proposto é inválido."
-            );
+                    "O telefone proposto é inválido.");
         }
 
-        String telefoneHash =
-            hmacCryptoUtil.gerarHash(dados.telefone());
+        String telefoneHash = hmacCryptoUtil.gerarHash(dados.telefone());
 
         if (ongRepository.existsByTelefoneHashAndIdOngNot(
                 telefoneHash,
                 ong.getIdOng())) {
 
             throw new ConflitoException(
-                "O telefone proposto já pertence a outra ONG."
-            );
+                    "O telefone proposto já pertence a outra ONG.");
         }
 
         if (dados.descricaoCurta() == null
@@ -792,8 +694,7 @@ public class SolicitacaoService {
                 || dados.descricaoCompleta().isBlank()) {
 
             throw new ConflitoException(
-                "As descrições propostas são inválidas."
-            );
+                    "As descrições propostas são inválidas.");
         }
 
         if (dados.cep() == null
@@ -810,16 +711,14 @@ public class SolicitacaoService {
                 || !dados.estado().matches("[A-Z]{2}")) {
 
             throw new ConflitoException(
-                "O endereço proposto é inválido."
-            );
+                    "O endereço proposto é inválido.");
         }
 
         if (dados.categorias() == null
                 || dados.categorias().isEmpty()) {
 
             throw new ConflitoException(
-                "A proposta não possui categorias válidas."
-            );
+                    "A proposta não possui categorias válidas.");
         }
     }
 
@@ -829,12 +728,10 @@ public class SolicitacaoService {
             OngEdicaoDadosDTO dados) {
 
         Descricao resumo = ong.getDescricoes()
-            .stream()
-            .filter(item ->
-                "RESUMO".equals(item.getTipoDescricao())
-            )
-            .findFirst()
-            .orElse(null);
+                .stream()
+                .filter(item -> "RESUMO".equals(item.getTipoDescricao()))
+                .findFirst()
+                .orElse(null);
 
         if (resumo == null) {
 
@@ -846,12 +743,10 @@ public class SolicitacaoService {
         resumo.setTexto(dados.descricaoCurta().trim());
 
         Descricao sobre = ong.getDescricoes()
-            .stream()
-            .filter(item ->
-                "SOBRE".equals(item.getTipoDescricao())
-            )
-            .findFirst()
-            .orElse(null);
+                .stream()
+                .filter(item -> "SOBRE".equals(item.getTipoDescricao()))
+                .findFirst()
+                .orElse(null);
 
         if (sobre == null) {
 
@@ -868,35 +763,29 @@ public class SolicitacaoService {
             Ong ong,
             List<Long> categoriasIds) {
 
-        Set<Long> idsUnicos =
-            new HashSet<>(categoriasIds);
+        Set<Long> idsUnicos = new HashSet<>(categoriasIds);
 
         if (idsUnicos.contains(null)
                 || idsUnicos.size() != categoriasIds.size()) {
 
             throw new ConflitoException(
-                "A proposta contém categorias inválidas ou repetidas."
-            );
+                    "A proposta contém categorias inválidas ou repetidas.");
         }
 
-        List<Categoria> categorias =
-            categoriaRepository.findAllById(idsUnicos);
+        List<Categoria> categorias = categoriaRepository.findAllById(idsUnicos);
 
         if (categorias.size() != idsUnicos.size()) {
 
             throw new ConflitoException(
-                "Uma categoria da proposta não existe mais."
-            );
+                    "Uma categoria da proposta não existe mais.");
         }
 
         // Remove somente as associações que não serão mantidas.
-        List<OngCategoria> remover =
-            new ArrayList<>(ong.getCategorias());
+        List<OngCategoria> remover = new ArrayList<>(ong.getCategorias());
 
         for (OngCategoria associacao : remover) {
 
-            Long idCategoria =
-                associacao.getCategoria().getIdCategoria();
+            Long idCategoria = associacao.getCategoria().getIdCategoria();
 
             if (!idsUnicos.contains(idCategoria)) {
                 ong.removeCategoria(associacao);
@@ -907,12 +796,10 @@ public class SolicitacaoService {
         for (Categoria categoria : categorias) {
 
             boolean jaExiste = ong.getCategorias()
-                .stream()
-                .anyMatch(associacao ->
-                    associacao.getCategoria()
-                        .getIdCategoria()
-                        .equals(categoria.getIdCategoria())
-                );
+                    .stream()
+                    .anyMatch(associacao -> associacao.getCategoria()
+                            .getIdCategoria()
+                            .equals(categoria.getIdCategoria()));
 
             if (!jaExiste) {
 
@@ -928,19 +815,17 @@ public class SolicitacaoService {
             Ong ong,
             List<String> caminhosPropostos) {
 
-        Set<String> caminhosAprovados =
-            new HashSet<>(caminhosPropostos);
+        Set<String> caminhosAprovados = new HashSet<>(caminhosPropostos);
 
         Set<String> caminhosAtuais = ong.getImagens()
-            .stream()
-            .map(imagem -> imagem.getCaminho())
-            .collect(Collectors.toSet());
+                .stream()
+                .map(imagem -> imagem.getCaminho())
+                .collect(Collectors.toSet());
 
         List<String> arquivosRemovidos = new ArrayList<>();
 
         // Remove as imagens descartadas pelo usuário.
-        List<Imagem> imagensAtuais =
-            new ArrayList<>(ong.getImagens());
+        List<Imagem> imagensAtuais = new ArrayList<>(ong.getImagens());
 
         for (Imagem imagem : imagensAtuais) {
 
@@ -948,8 +833,7 @@ public class SolicitacaoService {
                     imagem.getCaminho())) {
 
                 arquivosRemovidos.add(
-                    extrairNomeArquivo(imagem.getCaminho())
-                );
+                        extrairNomeArquivo(imagem.getCaminho()));
 
                 ong.removeImagem(imagem);
             }
@@ -967,15 +851,13 @@ public class SolicitacaoService {
             Imagem imagem = new Imagem();
             imagem.setCaminho(caminho);
 
-            String textoAlternativo =
-                "Imagem " + numeroImagem
-                + " da ONG " + ong.getNome();
+            String textoAlternativo = "Imagem " + numeroImagem
+                    + " da ONG " + ong.getNome();
 
             imagem.setTextoAlternativo(
-                textoAlternativo.length() > 255
-                    ? textoAlternativo.substring(0, 255)
-                    : textoAlternativo
-            );
+                    textoAlternativo.length() > 255
+                            ? textoAlternativo.substring(0, 255)
+                            : textoAlternativo);
 
             ong.addImagem(imagem);
             numeroImagem++;
@@ -990,11 +872,10 @@ public class SolicitacaoService {
 
         if (caminho == null
                 || !caminho.matches(
-                    "^/uploads/[0-9a-fA-F-]{36}\\.(jpg|png)$")) {
+                        "^/uploads/[0-9a-fA-F-]{36}\\.(jpg|png)$")) {
 
             throw new ConflitoException(
-                "O caminho de uma imagem é inválido."
-            );
+                    "O caminho de uma imagem é inválido.");
         }
 
         return caminho.substring("/uploads/".length());
@@ -1008,37 +889,33 @@ public class SolicitacaoService {
             return;
         }
 
-        List<String> arquivosParaExcluir =
-            new ArrayList<>(arquivos);
+        List<String> arquivosParaExcluir = new ArrayList<>(arquivos);
 
         TransactionSynchronizationManager.registerSynchronization(
-            new TransactionSynchronization() {
+                new TransactionSynchronization() {
 
-                @Override
-                public void afterCommit() {
+                    @Override
+                    public void afterCommit() {
 
-                    for (String nomeArquivo : arquivosParaExcluir) {
+                        for (String nomeArquivo : arquivosParaExcluir) {
 
-                        try {
+                            try {
 
-                            fileStorageService.deletarArquivo(
-                                nomeArquivo
-                            );
+                                fileStorageService.deletarArquivo(
+                                        nomeArquivo);
 
-                        } catch (RuntimeException erro) {
+                            } catch (RuntimeException erro) {
 
-                            // O banco já confirmou a transação.
-                            // Registra a falha para recuperação posterior.
-                            log.error(
-                                "Falha ao excluir arquivo após commit: {}",
-                                nomeArquivo,
-                                erro
-                            );
+                                // O banco já confirmou a transação.
+                                // Registra a falha para recuperação posterior.
+                                log.error(
+                                        "Falha ao excluir arquivo após commit: {}",
+                                        nomeArquivo,
+                                        erro);
+                            }
                         }
                     }
-                }
-            }
-        );
+                });
     }
 
     // Lista todas as solicitações.
@@ -1046,9 +923,9 @@ public class SolicitacaoService {
     public List<SolicitacaoResponseDTO> listarTodas() {
 
         return solicitacaoRepository.findAll()
-            .stream()
-            .map(this::converterParaDTO)
-            .collect(Collectors.toList());
+                .stream()
+                .map(this::converterParaDTO)
+                .collect(Collectors.toList());
     }
 
     // Lista os status disponíveis para análise.
@@ -1056,20 +933,18 @@ public class SolicitacaoService {
     public List<StatusSolicitacaoResponseDTO> listarStatus() {
 
         return statusSolicitacaoRepository.findAll()
-            .stream()
-            .map(status -> new StatusSolicitacaoResponseDTO(
-                status.getIdStatus(),
-                status.getNome()
-            ))
-            .toList();
+                .stream()
+                .map(status -> new StatusSolicitacaoResponseDTO(
+                        status.getIdStatus(),
+                        status.getNome()))
+                .toList();
     }
 
     // Busca uma solicitação pelo ID.
     @Transactional(readOnly = true)
     public SolicitacaoResponseDTO buscarPorId(Long id) {
 
-        Solicitacao solicitacao =
-            buscarSolicitacao(id);
+        Solicitacao solicitacao = buscarSolicitacao(id);
 
         return converterParaDTO(solicitacao);
     }
@@ -1083,10 +958,10 @@ public class SolicitacaoService {
         buscarStatus(idStatus);
 
         return solicitacaoRepository
-            .findByStatusIdStatus(idStatus)
-            .stream()
-            .map(this::converterParaDTO)
-            .collect(Collectors.toList());
+                .findByStatusIdStatus(idStatus)
+                .stream()
+                .map(this::converterParaDTO)
+                .collect(Collectors.toList());
     }
 
     // Lista solicitações abertas por um usuário.
@@ -1098,10 +973,10 @@ public class SolicitacaoService {
         buscarUsuario(idUsuario);
 
         return solicitacaoRepository
-            .findByUsuarioIdUsuario(idUsuario)
-            .stream()
-            .map(this::converterParaDTO)
-            .collect(Collectors.toList());
+                .findByUsuarioIdUsuario(idUsuario)
+                .stream()
+                .map(this::converterParaDTO)
+                .collect(Collectors.toList());
     }
 
     // Lista solicitações associadas a uma ONG.
@@ -1113,33 +988,27 @@ public class SolicitacaoService {
         buscarOng(idOng);
 
         return solicitacaoRepository
-            .findByOngIdOng(idOng)
-            .stream()
-            .map(this::converterParaDTO)
-            .collect(Collectors.toList());
+                .findByOngIdOng(idOng)
+                .stream()
+                .map(this::converterParaDTO)
+                .collect(Collectors.toList());
     }
 
     // Busca uma ONG ou lança uma exceção 404.
     private Ong buscarOng(Long idOng) {
 
         return ongRepository.findById(idOng)
-            .orElseThrow(() ->
-                new RecursoNaoEncontradoException(
-                    "ONG não encontrada com o ID: " + idOng
-                )
-            );
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "ONG não encontrada com o ID: " + idOng));
     }
 
     // Busca um usuário ou lança uma exceção 404.
     private Usuario buscarUsuario(Long idUsuario) {
 
         return usuarioRepository.findById(idUsuario)
-            .orElseThrow(() ->
-                new RecursoNaoEncontradoException(
-                    "Usuário não encontrado com o ID: "
-                    + idUsuario
-                )
-            );
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "Usuário não encontrado com o ID: "
+                                + idUsuario));
     }
 
     // Busca uma solicitação ou lança uma exceção 404.
@@ -1147,39 +1016,31 @@ public class SolicitacaoService {
             Long idSolicitacao) {
 
         return solicitacaoRepository.findById(idSolicitacao)
-            .orElseThrow(() ->
-                new RecursoNaoEncontradoException(
-                    "Solicitação não encontrada com o ID: "
-                    + idSolicitacao
-                )
-            );
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "Solicitação não encontrada com o ID: "
+                                + idSolicitacao));
     }
 
     // Busca um status pelo ID.
     private StatusSolicitacao buscarStatus(Long idStatus) {
 
         return statusSolicitacaoRepository.findById(idStatus)
-            .orElseThrow(() ->
-                new RecursoNaoEncontradoException(
-                    "Status não encontrado com o ID: " + idStatus
-                )
-            );
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "Status não encontrado com o ID: " + idStatus));
     }
 
     // Garante que a solicitação ainda está pendente.
     private void validarSolicitacaoPendente(
             Solicitacao solicitacao) {
 
-        String status =
-            solicitacao.getStatus()
+        String status = solicitacao.getStatus()
                 .getNome()
                 .toUpperCase();
 
         if (!status.equals("PENDENTE")) {
 
             throw new ConflitoException(
-                "Esta solicitação já foi analisada."
-            );
+                    "Esta solicitação já foi analisada.");
         }
     }
 
@@ -1189,16 +1050,15 @@ public class SolicitacaoService {
         if (administrador.getFuncao() == null
                 || administrador.getFuncao().getNome() == null
                 || (!administrador.getFuncao()
-                    .getNome()
-                    .equalsIgnoreCase("ADMINISTRADOR")
-                && !administrador.getFuncao()
-                    .getNome()
-                    .equalsIgnoreCase("MASTER"))) {
+                        .getNome()
+                        .equalsIgnoreCase("ADMINISTRADOR")
+                        && !administrador.getFuncao()
+                                .getNome()
+                                .equalsIgnoreCase("MASTER"))) {
 
             throw new ConflitoException(
-                "O usuário autenticado não possui "
-                + "permissão de administrador."
-            );
+                    "O usuário autenticado não possui "
+                            + "permissão de administrador.");
         }
     }
 
@@ -1209,11 +1069,10 @@ public class SolicitacaoService {
 
         if (nomeStatus.equals("REJEITADO")
                 && (motivoRejeicao == null
-                || motivoRejeicao.isBlank())) {
+                        || motivoRejeicao.isBlank())) {
 
             throw new ConflitoException(
-                "O motivo da rejeição é obrigatório."
-            );
+                    "O motivo da rejeição é obrigatório.");
         }
 
         if (nomeStatus.equals("APROVADO")
@@ -1221,9 +1080,8 @@ public class SolicitacaoService {
                 && !motivoRejeicao.isBlank()) {
 
             throw new ConflitoException(
-                "O motivo da rejeição não deve "
-                + "ser informado ao aprovar."
-            );
+                    "O motivo da rejeição não deve "
+                            + "ser informado ao aprovar.");
         }
     }
 
@@ -1231,45 +1089,41 @@ public class SolicitacaoService {
     private SolicitacaoResponseDTO converterParaDTO(
             Solicitacao solicitacao) {
 
-        Usuario administrador =
-            solicitacao.getAdministrador();
+        Usuario administrador = solicitacao.getAdministrador();
 
-        Long idAdministrador =
-            administrador != null
+        Long idAdministrador = administrador != null
                 ? administrador.getIdUsuario()
                 : null;
 
-        String nomeAdministrador =
-            administrador != null
+        String nomeAdministrador = administrador != null
                 ? administrador.getNome()
                 : null;
 
         return new SolicitacaoResponseDTO(
-            solicitacao.getIdSolicitacao(),
+                solicitacao.getIdSolicitacao(),
 
-            solicitacao.getOng().getIdOng(),
-            solicitacao.getOng().getNome(),
+                solicitacao.getOng().getIdOng(),
+                solicitacao.getOng().getNome(),
 
-            solicitacao.getUsuario().getIdUsuario(),
-            solicitacao.getUsuario().getNome(),
+                solicitacao.getUsuario().getIdUsuario(),
+                solicitacao.getUsuario().getNome(),
 
-            idAdministrador,
-            nomeAdministrador,
+                idAdministrador,
+                nomeAdministrador,
 
-            solicitacao.getStatus().getIdStatus(),
-            solicitacao.getStatus().getNome(),
+                solicitacao.getStatus().getIdStatus(),
+                solicitacao.getStatus().getNome(),
 
-            solicitacao.getDataAnalise(),
-            solicitacao.getMotivoRejeicao(),
+                solicitacao.getDataAnalise(),
+                solicitacao.getMotivoRejeicao(),
 
-            // Identifica o tipo da solicitação.
-            solicitacao.getTipoSolicitacao() == null
-                ? "CADASTRO"
-                : solicitacao.getTipoSolicitacao(),
+                // Identifica o tipo da solicitação.
+                solicitacao.getTipoSolicitacao() == null
+                        ? "CADASTRO"
+                        : solicitacao.getTipoSolicitacao(),
 
-            // Informações da solicitação de exclusão.
-            solicitacao.getMotivoExclusao(),
-            solicitacao.getDetalhesExclusao()
-        );
+                // Informações da solicitação de exclusão.
+                solicitacao.getMotivoExclusao(),
+                solicitacao.getDetalhesExclusao());
     }
 }

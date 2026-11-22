@@ -1,9 +1,7 @@
 package br.edu.ifsp.entrecausas.controller;
 
-import br.edu.ifsp.entrecausas.dto.CategoriaRequestDTO;
-import br.edu.ifsp.entrecausas.dto.CategoriaResponseDTO;
-import br.edu.ifsp.entrecausas.service.CategoriaService;
-import jakarta.validation.Valid;
+import java.util.List;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -15,7 +13,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
+import br.edu.ifsp.entrecausas.dto.CategoriaRequestDTO;
+import br.edu.ifsp.entrecausas.dto.CategoriaResponseDTO;
+import br.edu.ifsp.entrecausas.service.CategoriaService;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/categorias")
@@ -28,7 +29,8 @@ public class CategoriaController {
         this.categoriaService = categoriaService;
     }
 
-    // Endpoint POST: Recebe o DTO em JSON e aciona as validações do @Valid antes de salvar a categoria
+    // Endpoint POST: Recebe o DTO em JSON e aciona as validações do @Valid antes de
+    // salvar a categoria
     @PostMapping
     public ResponseEntity<CategoriaResponseDTO> cadastrar(@Valid @RequestBody CategoriaRequestDTO dto) {
         CategoriaResponseDTO response = categoriaService.cadastrar(dto);
@@ -50,7 +52,7 @@ public class CategoriaController {
     // Endpoint PUT: Atualiza o nome de uma categoria existente por ID
     @PutMapping("/{id}")
     public ResponseEntity<CategoriaResponseDTO> atualizar(
-            @PathVariable Long id, 
+            @PathVariable Long id,
             @Valid @RequestBody CategoriaRequestDTO dto) {
         CategoriaResponseDTO response = categoriaService.atualizar(id, dto);
         return ResponseEntity.ok(response);

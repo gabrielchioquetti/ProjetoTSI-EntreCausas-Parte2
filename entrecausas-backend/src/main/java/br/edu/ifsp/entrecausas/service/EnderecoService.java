@@ -39,8 +39,7 @@ public class EnderecoService {
         // Cada ONG pode possuir somente um endereço.
         if (enderecoRepository.existsByOngIdOng(dto.idOng())) {
             throw new ConflitoException(
-                "A ONG informada já possui um endereço cadastrado."
-            );
+                    "A ONG informada já possui um endereço cadastrado.");
         }
 
         // Cria a entidade de endereço.
@@ -55,14 +54,12 @@ public class EnderecoService {
 
         // Padroniza a UF em letras maiúsculas.
         endereco.setEstado(
-            dto.estado().toUpperCase()
-        );
+                dto.estado().toUpperCase());
 
         endereco.setOng(ong);
 
         // Salva o endereço.
-        Endereco enderecoSalvo =
-            enderecoRepository.save(endereco);
+        Endereco enderecoSalvo = enderecoRepository.save(endereco);
 
         return converterParaDTO(enderecoSalvo);
     }
@@ -71,9 +68,9 @@ public class EnderecoService {
     public List<EnderecoResponseDTO> listarTodos() {
 
         return enderecoRepository.findAll()
-            .stream()
-            .map(this::converterParaDTO)
-            .collect(Collectors.toList());
+                .stream()
+                .map(this::converterParaDTO)
+                .collect(Collectors.toList());
     }
 
     // Busca um endereço pelo ID.
@@ -91,12 +88,9 @@ public class EnderecoService {
         buscarOng(idOng);
 
         Endereco endereco = enderecoRepository
-            .findByOngIdOng(idOng)
-            .orElseThrow(() ->
-                new RecursoNaoEncontradoException(
-                    "A ONG não possui endereço cadastrado."
-                )
-            );
+                .findByOngIdOng(idOng)
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "A ONG não possui endereço cadastrado."));
 
         return converterParaDTO(endereco);
     }
@@ -117,11 +111,10 @@ public class EnderecoService {
         if (!ong.getIdOng().equals(
                 endereco.getOng().getIdOng())
                 && enderecoRepository.existsByOngIdOng(
-                    dto.idOng())) {
+                        dto.idOng())) {
 
             throw new ConflitoException(
-                "A ONG informada já possui um endereço cadastrado."
-            );
+                    "A ONG informada já possui um endereço cadastrado.");
         }
 
         // Atualiza os dados do endereço.
@@ -134,14 +127,12 @@ public class EnderecoService {
 
         // Padroniza a UF em letras maiúsculas.
         endereco.setEstado(
-            dto.estado().toUpperCase()
-        );
+                dto.estado().toUpperCase());
 
         endereco.setOng(ong);
 
         // Salva a atualização.
-        Endereco enderecoAtualizado =
-            enderecoRepository.save(endereco);
+        Endereco enderecoAtualizado = enderecoRepository.save(endereco);
 
         return converterParaDTO(enderecoAtualizado);
     }
@@ -158,22 +149,16 @@ public class EnderecoService {
     private Ong buscarOng(Long idOng) {
 
         return ongRepository.findById(idOng)
-            .orElseThrow(() ->
-                new RecursoNaoEncontradoException(
-                    "ONG não encontrada com o ID: " + idOng
-                )
-            );
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "ONG não encontrada com o ID: " + idOng));
     }
 
     // Busca um endereço ou lança uma exceção 404.
     private Endereco buscarEntidadePorId(Long id) {
 
         return enderecoRepository.findById(id)
-            .orElseThrow(() ->
-                new RecursoNaoEncontradoException(
-                    "Endereço não encontrado com o ID: " + id
-                )
-            );
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "Endereço não encontrado com o ID: " + id));
     }
 
     // Converte a entidade para o DTO de resposta.
@@ -181,15 +166,14 @@ public class EnderecoService {
             Endereco endereco) {
 
         return new EnderecoResponseDTO(
-            endereco.getIdEndereco(),
-            endereco.getCep(),
-            endereco.getLogradouro(),
-            endereco.getNumero(),
-            endereco.getComplemento(),
-            endereco.getBairro(),
-            endereco.getCidade(),
-            endereco.getEstado(),
-            endereco.getOng().getIdOng()
-        );
+                endereco.getIdEndereco(),
+                endereco.getCep(),
+                endereco.getLogradouro(),
+                endereco.getNumero(),
+                endereco.getComplemento(),
+                endereco.getBairro(),
+                endereco.getCidade(),
+                endereco.getEstado(),
+                endereco.getOng().getIdOng());
     }
 }

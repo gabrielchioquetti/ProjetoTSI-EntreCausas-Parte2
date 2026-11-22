@@ -13,17 +13,14 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import br.edu.ifsp.entrecausas.dto.ImagemResponseDTO;
-
 import br.edu.ifsp.entrecausas.entity.Imagem;
 import br.edu.ifsp.entrecausas.entity.ImagemEdicaoPendente;
 import br.edu.ifsp.entrecausas.entity.Ong;
 import br.edu.ifsp.entrecausas.entity.Solicitacao;
 import br.edu.ifsp.entrecausas.entity.Usuario;
-
 import br.edu.ifsp.entrecausas.exception.RecursoNaoEncontradoException;
-
-import br.edu.ifsp.entrecausas.repository.ImagemRepository;
 import br.edu.ifsp.entrecausas.repository.ImagemEdicaoPendenteRepository;
+import br.edu.ifsp.entrecausas.repository.ImagemRepository;
 import br.edu.ifsp.entrecausas.repository.OngRepository;
 import br.edu.ifsp.entrecausas.repository.UsuarioRepository;
 
@@ -63,10 +60,9 @@ public class ImagemService {
             MultipartFile arquivo) {
 
         throw new ResponseStatusException(
-            HttpStatus.FORBIDDEN,
-            "O cadastro de imagens deve ser realizado "
-            + "pelo formulário da ONG e passar por análise administrativa."
-        );
+                HttpStatus.FORBIDDEN,
+                "O cadastro de imagens deve ser realizado "
+                        + "pelo formulário da ONG e passar por análise administrativa.");
     }
 
     // Cadastra várias imagens de uma vez.
@@ -78,10 +74,9 @@ public class ImagemService {
             List<MultipartFile> arquivos) {
 
         throw new ResponseStatusException(
-            HttpStatus.FORBIDDEN,
-            "O cadastro de imagens deve ser realizado "
-            + "pelo formulário da ONG e passar por análise administrativa."
-        );
+                HttpStatus.FORBIDDEN,
+                "O cadastro de imagens deve ser realizado "
+                        + "pelo formulário da ONG e passar por análise administrativa.");
     }
 
     // Lista todas as imagens cadastradas.
@@ -89,9 +84,9 @@ public class ImagemService {
     public List<ImagemResponseDTO> listarTodas() {
 
         return imagemRepository.findAll()
-            .stream()
-            .map(this::converterParaDTO)
-            .collect(Collectors.toList());
+                .stream()
+                .map(this::converterParaDTO)
+                .collect(Collectors.toList());
     }
 
     // Busca uma imagem pelo ID.
@@ -112,9 +107,9 @@ public class ImagemService {
         buscarOng(idOng);
 
         return imagemRepository.findByOngIdOng(idOng)
-            .stream()
-            .map(this::converterParaDTO)
-            .collect(Collectors.toList());
+                .stream()
+                .map(this::converterParaDTO)
+                .collect(Collectors.toList());
     }
 
     // Atualiza os dados de uma imagem.
@@ -128,10 +123,9 @@ public class ImagemService {
             MultipartFile novoArquivo) {
 
         throw new ResponseStatusException(
-            HttpStatus.FORBIDDEN,
-            "A atualização de imagens deve ser enviada "
-            + "para análise administrativa."
-        );
+                HttpStatus.FORBIDDEN,
+                "A atualização de imagens deve ser enviada "
+                        + "para análise administrativa.");
     }
 
     // Remove a imagem do banco e do sistema de arquivos.
@@ -140,10 +134,9 @@ public class ImagemService {
     public void deletar(Long id) {
 
         throw new ResponseStatusException(
-            HttpStatus.FORBIDDEN,
-            "A exclusão de imagens deve ser enviada "
-            + "para análise administrativa."
-        );
+                HttpStatus.FORBIDDEN,
+                "A exclusão de imagens deve ser enviada "
+                        + "para análise administrativa.");
     }
 
     // Verifica se o usuário pode visualizar o arquivo.
@@ -155,34 +148,27 @@ public class ImagemService {
         // Confirma que o nome segue o padrão do armazenamento.
         fileStorageService.obterTipoConteudo(nomeArquivo);
 
-        boolean administrador =
-            ehAdministrador(authentication);
+        boolean administrador = ehAdministrador(authentication);
 
-        String caminho =
-            "/uploads/" + nomeArquivo;
+        String caminho = "/uploads/" + nomeArquivo;
 
         // Verifica todos os tipos de vínculo antes de autorizar.
-        Optional<Usuario> usuarioFoto =
-            usuarioRepository.findByFotoPerfil(nomeArquivo);
+        Optional<Usuario> usuarioFoto = usuarioRepository.findByFotoPerfil(nomeArquivo);
 
-        Optional<ImagemEdicaoPendente> imagemPendente =
-            imagemEdicaoPendenteRepository
+        Optional<ImagemEdicaoPendente> imagemPendente = imagemEdicaoPendenteRepository
                 .findByNomeArquivo(nomeArquivo);
 
-        Optional<Imagem> imagemOng =
-            imagemRepository.findByCaminho(caminho);
+        Optional<Imagem> imagemOng = imagemRepository.findByCaminho(caminho);
 
         // Compatibilidade com registros antigos.
         if (imagemOng.isEmpty()) {
-            imagemOng =
-                imagemRepository.findByCaminho(nomeArquivo);
+            imagemOng = imagemRepository.findByCaminho(nomeArquivo);
         }
 
         // Um arquivo com vínculos conflitantes não é público.
-        int quantidadeVinculos =
-            (usuarioFoto.isPresent() ? 1 : 0)
-            + (imagemPendente.isPresent() ? 1 : 0)
-            + (imagemOng.isPresent() ? 1 : 0);
+        int quantidadeVinculos = (usuarioFoto.isPresent() ? 1 : 0)
+                + (imagemPendente.isPresent() ? 1 : 0)
+                + (imagemOng.isPresent() ? 1 : 0);
 
         if (quantidadeVinculos == 0) {
 
@@ -201,8 +187,8 @@ public class ImagemService {
 
             if (administrador
                     || ehProprietario(
-                        usuarioFoto.get(),
-                        authentication)) {
+                            usuarioFoto.get(),
+                            authentication)) {
 
                 return;
             }
@@ -213,21 +199,20 @@ public class ImagemService {
         // Imagens novas de edições pendentes são privadas.
         if (imagemPendente.isPresent()) {
 
-            Solicitacao solicitacao =
-                imagemPendente.get().getSolicitacao();
+            Solicitacao solicitacao = imagemPendente.get().getSolicitacao();
 
             if (!"EDICAO".equalsIgnoreCase(
                     solicitacao.getTipoSolicitacao())
                     || !"PENDENTE".equalsIgnoreCase(
-                        solicitacao.getStatus().getNome())) {
+                            solicitacao.getStatus().getNome())) {
 
                 negarAcesso();
             }
 
             if (administrador
                     || ehProprietario(
-                        solicitacao.getOng().getUsuario(),
-                        authentication)) {
+                            solicitacao.getOng().getUsuario(),
+                            authentication)) {
 
                 return;
             }
@@ -247,8 +232,8 @@ public class ImagemService {
             // ONGs ainda não publicadas são privadas.
             if (administrador
                     || ehProprietario(
-                        ong.getUsuario(),
-                        authentication)) {
+                            ong.getUsuario(),
+                            authentication)) {
 
                 return;
             }
@@ -263,11 +248,10 @@ public class ImagemService {
             Authentication authentication) {
 
         return usuario != null
-            && usuario.getEmail() != null
-            && autenticado(authentication)
-            && usuario.getEmail().equalsIgnoreCase(
-                authentication.getName()
-            );
+                && usuario.getEmail() != null
+                && autenticado(authentication)
+                && usuario.getEmail().equalsIgnoreCase(
+                        authentication.getName());
     }
 
     // Confere a autoridade administrativa.
@@ -277,17 +261,15 @@ public class ImagemService {
             return false;
         }
 
-        Set<String> autoridades =
-            authentication.getAuthorities()
+        Set<String> autoridades = authentication.getAuthorities()
                 .stream()
-                .map(autoridade ->
-                    autoridade.getAuthority().toUpperCase())
+                .map(autoridade -> autoridade.getAuthority().toUpperCase())
                 .collect(Collectors.toSet());
 
         return autoridades.contains("ADMINISTRADOR")
-            || autoridades.contains("ROLE_ADMINISTRADOR")
-            || autoridades.contains("MASTER")
-            || autoridades.contains("ROLE_MASTER");
+                || autoridades.contains("ROLE_ADMINISTRADOR")
+                || autoridades.contains("MASTER")
+                || autoridades.contains("ROLE_MASTER");
     }
 
     // Verifica se existe uma sessão autenticada.
@@ -295,43 +277,34 @@ public class ImagemService {
             Authentication authentication) {
 
         return authentication != null
-            && authentication.isAuthenticated()
-            && !(authentication
-                instanceof org.springframework.security.authentication
-                    .AnonymousAuthenticationToken);
+                && authentication.isAuthenticated()
+                && !(authentication instanceof org.springframework.security.authentication.AnonymousAuthenticationToken);
     }
 
     // Responde com acesso negado.
     private void negarAcesso() {
 
         throw new ResponseStatusException(
-            HttpStatus.FORBIDDEN,
-            "Você não possui permissão para acessar este arquivo."
-        );
+                HttpStatus.FORBIDDEN,
+                "Você não possui permissão para acessar este arquivo.");
     }
 
     // Busca uma ONG ou lança uma exceção 404.
     private Ong buscarOng(Long idOng) {
 
         return ongRepository.findById(idOng)
-            .orElseThrow(() ->
-                new RecursoNaoEncontradoException(
-                    "ONG não encontrada com o ID: "
-                    + idOng
-                )
-            );
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "ONG não encontrada com o ID: "
+                                + idOng));
     }
 
     // Busca uma imagem ou lança uma exceção 404.
     private Imagem buscarEntidadePorId(Long id) {
 
         return imagemRepository.findById(id)
-            .orElseThrow(() ->
-                new RecursoNaoEncontradoException(
-                    "Imagem não encontrada com o ID: "
-                    + id
-                )
-            );
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "Imagem não encontrada com o ID: "
+                                + id));
     }
 
     // Converte a entidade para o DTO de resposta.
@@ -339,10 +312,9 @@ public class ImagemService {
             Imagem imagem) {
 
         return new ImagemResponseDTO(
-            imagem.getIdImagem(),
-            imagem.getCaminho(),
-            imagem.getTextoAlternativo(),
-            imagem.getOng().getIdOng()
-        );
+                imagem.getIdImagem(),
+                imagem.getCaminho(),
+                imagem.getTextoAlternativo(),
+                imagem.getOng().getIdOng());
     }
 }

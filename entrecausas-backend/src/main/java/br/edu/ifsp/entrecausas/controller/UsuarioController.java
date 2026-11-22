@@ -1,22 +1,29 @@
 package br.edu.ifsp.entrecausas.controller;
 
+import java.util.List;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
+
 import br.edu.ifsp.entrecausas.dto.AlterarSenhaDTO;
 import br.edu.ifsp.entrecausas.dto.ExcluirContaDTO;
 import br.edu.ifsp.entrecausas.dto.UsuarioRequestDTO;
 import br.edu.ifsp.entrecausas.dto.UsuarioResponseDTO;
 import br.edu.ifsp.entrecausas.dto.UsuarioUpdateDTO;
 import br.edu.ifsp.entrecausas.service.UsuarioService;
-
 import jakarta.validation.Valid;
-
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/usuarios")
@@ -57,10 +64,7 @@ public class UsuarioController {
     }
 
     // Atualiza os dados do usuário autenticado.
-    @PutMapping(
-            value = "/{id}",
-            consumes = MediaType.MULTIPART_FORM_DATA_VALUE
-    )
+    @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<UsuarioResponseDTO> atualizar(
             @PathVariable Long id,
             @Valid @RequestPart("usuario") UsuarioUpdateDTO dto,
@@ -68,8 +72,7 @@ public class UsuarioController {
 
         // O serviço verifica se o usuário é o proprietário.
         // Se o e-mail mudar, as sessões serão expiradas após o commit.
-        UsuarioResponseDTO usuarioAtualizado =
-                usuarioService.atualizar(id, dto, foto);
+        UsuarioResponseDTO usuarioAtualizado = usuarioService.atualizar(id, dto, foto);
 
         return ResponseEntity.ok(usuarioAtualizado);
     }
@@ -106,7 +109,6 @@ public class UsuarioController {
         return ResponseEntity.ok(usuario);
     }
 
-    
     // Desativa e anonimiza a própria conta, exceto MASTER.
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deletar(

@@ -40,13 +40,11 @@ public class DescricaoService {
 
         descricao.setTexto(dto.texto());
         descricao.setTipoDescricao(
-            dto.tipoDescricao().toUpperCase()
-        );
+                dto.tipoDescricao().toUpperCase());
         descricao.setOng(ong);
 
         // Salva a descrição.
-        Descricao descricaoSalva =
-            descricaoRepository.save(descricao);
+        Descricao descricaoSalva = descricaoRepository.save(descricao);
 
         return converterParaDTO(descricaoSalva);
     }
@@ -55,9 +53,9 @@ public class DescricaoService {
     public List<DescricaoResponseDTO> listarTodas() {
 
         return descricaoRepository.findAll()
-            .stream()
-            .map(this::converterParaDTO)
-            .collect(Collectors.toList());
+                .stream()
+                .map(this::converterParaDTO)
+                .collect(Collectors.toList());
     }
 
     // Busca uma descrição pelo ID.
@@ -76,9 +74,9 @@ public class DescricaoService {
         buscarOng(idOng);
 
         return descricaoRepository.findByOngIdOng(idOng)
-            .stream()
-            .map(this::converterParaDTO)
-            .collect(Collectors.toList());
+                .stream()
+                .map(this::converterParaDTO)
+                .collect(Collectors.toList());
     }
 
     // Atualiza uma descrição existente.
@@ -95,13 +93,11 @@ public class DescricaoService {
         // Atualiza os dados da descrição.
         descricao.setTexto(dto.texto());
         descricao.setTipoDescricao(
-            dto.tipoDescricao().toUpperCase()
-        );
+                dto.tipoDescricao().toUpperCase());
         descricao.setOng(ong);
 
         // Salva a atualização.
-        Descricao descricaoAtualizada =
-            descricaoRepository.save(descricao);
+        Descricao descricaoAtualizada = descricaoRepository.save(descricao);
 
         return converterParaDTO(descricaoAtualizada);
     }
@@ -118,22 +114,16 @@ public class DescricaoService {
     private Ong buscarOng(Long idOng) {
 
         return ongRepository.findById(idOng)
-            .orElseThrow(() ->
-                new RecursoNaoEncontradoException(
-                    "ONG não encontrada com o ID: " + idOng
-                )
-            );
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "ONG não encontrada com o ID: " + idOng));
     }
 
     // Busca uma descrição ou lança uma exceção 404.
     private Descricao buscarEntidadePorId(Long id) {
 
         return descricaoRepository.findById(id)
-            .orElseThrow(() ->
-                new RecursoNaoEncontradoException(
-                    "Descrição não encontrada com o ID: " + id
-                )
-            );
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "Descrição não encontrada com o ID: " + id));
     }
 
     // Converte a entidade para o DTO de resposta.
@@ -141,10 +131,9 @@ public class DescricaoService {
             Descricao descricao) {
 
         return new DescricaoResponseDTO(
-            descricao.getIdDescricao(),
-            descricao.getTexto(),
-            descricao.getTipoDescricao(),
-            descricao.getOng().getIdOng()
-        );
+                descricao.getIdDescricao(),
+                descricao.getTexto(),
+                descricao.getTipoDescricao(),
+                descricao.getOng().getIdOng());
     }
 }

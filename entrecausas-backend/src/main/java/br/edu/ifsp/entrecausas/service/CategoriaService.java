@@ -1,14 +1,15 @@
 package br.edu.ifsp.entrecausas.service;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import br.edu.ifsp.entrecausas.dto.CategoriaRequestDTO;
 import br.edu.ifsp.entrecausas.dto.CategoriaResponseDTO;
 import br.edu.ifsp.entrecausas.entity.Categoria;
 import br.edu.ifsp.entrecausas.repository.CategoriaRepository;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
-import java.util.stream.Collectors;
 
 // Camada de serviço contendo as regras de negócio para o gerenciamento de categorias de ONGs
 @Service
@@ -51,14 +52,15 @@ public class CategoriaService {
         return converterParaDTO(categoria);
     }
 
-    // Atualiza os dados de uma categoria existente prevenindo conflitos de nomes duplicados
+    // Atualiza os dados de uma categoria existente prevenindo conflitos de nomes
+    // duplicados
     @Transactional
     public CategoriaResponseDTO atualizar(Long id, CategoriaRequestDTO dto) {
         Categoria categoria = categoriaRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Categoria não encontrada com ID: " + id));
 
         // Valida se o novo nome já pertence a outra categoria
-        if (!categoria.getNome().equalsIgnoreCase(dto.nome()) 
+        if (!categoria.getNome().equalsIgnoreCase(dto.nome())
                 && categoriaRepository.existsByNomeIgnoreCase(dto.nome())) {
             throw new IllegalArgumentException("Já existe outra categoria com este nome.");
         }
@@ -78,11 +80,11 @@ public class CategoriaService {
         categoriaRepository.delete(categoria);
     }
 
-    // Método privado utilitário para conversão da Entidade JPA para o DTO de resposta
+    // Método privado utilitário para conversão da Entidade JPA para o DTO de
+    // resposta
     private CategoriaResponseDTO converterParaDTO(Categoria categoria) {
         return new CategoriaResponseDTO(
                 categoria.getIdCategoria(),
-                categoria.getNome()
-        );
+                categoria.getNome());
     }
 }

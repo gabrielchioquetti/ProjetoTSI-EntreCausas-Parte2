@@ -36,20 +36,15 @@ public class OngPublicacaoService {
             return false;
         }
 
-        List<Solicitacao> solicitacoes =
-            solicitacaoRepository.findByOngIdOng(idOng);
+        List<Solicitacao> solicitacoes = solicitacaoRepository.findByOngIdOng(idOng);
 
         // Uma exclusão aprovada impede definitivamente
         // a publicação da ONG.
         boolean encerramentoAprovado = solicitacoes.stream()
-            .anyMatch(solicitacao ->
-                "EXCLUSAO".equalsIgnoreCase(
-                    solicitacao.getTipoSolicitacao()
-                )
-                && "APROVADO".equalsIgnoreCase(
-                    solicitacao.getStatus().getNome()
-                )
-            );
+                .anyMatch(solicitacao -> "EXCLUSAO".equalsIgnoreCase(
+                        solicitacao.getTipoSolicitacao())
+                        && "APROVADO".equalsIgnoreCase(
+                                solicitacao.getStatus().getNome()));
 
         if (encerramentoAprovado) {
             return false;
@@ -57,15 +52,11 @@ public class OngPublicacaoService {
 
         // A aprovação do cadastro inicial publica a ONG.
         boolean cadastroAprovado = solicitacoes.stream()
-            .anyMatch(solicitacao ->
-                (solicitacao.getTipoSolicitacao() == null
-                    || "CADASTRO".equalsIgnoreCase(
-                        solicitacao.getTipoSolicitacao()
-                    ))
-                && "APROVADO".equalsIgnoreCase(
-                    solicitacao.getStatus().getNome()
-                )
-            );
+                .anyMatch(solicitacao -> (solicitacao.getTipoSolicitacao() == null
+                        || "CADASTRO".equalsIgnoreCase(
+                                solicitacao.getTipoSolicitacao()))
+                        && "APROVADO".equalsIgnoreCase(
+                                solicitacao.getStatus().getNome()));
 
         if (cadastroAprovado) {
             return true;
@@ -74,25 +65,17 @@ public class OngPublicacaoService {
         // Uma correção aprovada também pode publicar a ONG,
         // desde que o cadastro inicial tenha sido rejeitado.
         boolean cadastroRejeitado = solicitacoes.stream()
-            .anyMatch(solicitacao ->
-                (solicitacao.getTipoSolicitacao() == null
-                    || "CADASTRO".equalsIgnoreCase(
-                        solicitacao.getTipoSolicitacao()
-                    ))
-                && "REJEITADO".equalsIgnoreCase(
-                    solicitacao.getStatus().getNome()
-                )
-            );
+                .anyMatch(solicitacao -> (solicitacao.getTipoSolicitacao() == null
+                        || "CADASTRO".equalsIgnoreCase(
+                                solicitacao.getTipoSolicitacao()))
+                        && "REJEITADO".equalsIgnoreCase(
+                                solicitacao.getStatus().getNome()));
 
         boolean correcaoAprovada = solicitacoes.stream()
-            .anyMatch(solicitacao ->
-                "EDICAO".equalsIgnoreCase(
-                    solicitacao.getTipoSolicitacao()
-                )
-                && "APROVADO".equalsIgnoreCase(
-                    solicitacao.getStatus().getNome()
-                )
-            );
+                .anyMatch(solicitacao -> "EDICAO".equalsIgnoreCase(
+                        solicitacao.getTipoSolicitacao())
+                        && "APROVADO".equalsIgnoreCase(
+                                solicitacao.getStatus().getNome()));
 
         return cadastroRejeitado && correcaoAprovada;
     }

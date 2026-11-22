@@ -1,21 +1,12 @@
 package br.edu.ifsp.entrecausas.controller;
 
-import br.edu.ifsp.entrecausas.dto.LoginRequestDTO;
-import br.edu.ifsp.entrecausas.dto.UsuarioPerfilDTO;
-import br.edu.ifsp.entrecausas.dto.UsuarioResponseDTO;
-
-import br.edu.ifsp.entrecausas.entity.Usuario;
-import br.edu.ifsp.entrecausas.repository.UsuarioRepository;
-import br.edu.ifsp.entrecausas.security.AesCryptoUtil;
-
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
-import jakarta.validation.Valid;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -24,22 +15,26 @@ import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.session.SessionInformation;
 import org.springframework.security.core.session.SessionRegistry;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.csrf.CsrfToken;
-import org.springframework.security.crypto.password.PasswordEncoder;
-
 import org.springframework.transaction.annotation.Transactional;
-
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Optional;
+import br.edu.ifsp.entrecausas.dto.LoginRequestDTO;
+import br.edu.ifsp.entrecausas.dto.UsuarioPerfilDTO;
+import br.edu.ifsp.entrecausas.dto.UsuarioResponseDTO;
+import br.edu.ifsp.entrecausas.entity.Usuario;
+import br.edu.ifsp.entrecausas.repository.UsuarioRepository;
+import br.edu.ifsp.entrecausas.security.AesCryptoUtil;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -73,29 +68,26 @@ public class AuthController {
             HttpServletRequest request,
             HttpServletResponse response) {
 
-        Optional<Usuario> resultado =
-            usuarioRepository.findByEmail(dto.email().trim());
+        Optional<Usuario> resultado = usuarioRepository.findByEmail(dto.email().trim());
 
         // Não revela se o e-mail existe ou se a conta está desativada.
         if (resultado.isEmpty()
                 || !resultado.get().isAtivo()
                 || !passwordEncoder.matches(
-                    dto.senha(),
-                    resultado.get().getSenha())) {
+                        dto.senha(),
+                        resultado.get().getSenha())) {
 
             return ResponseEntity
-                .status(HttpStatus.UNAUTHORIZED)
-                .body(Map.of(
-                    "mensagem",
-                    "E-mail ou senha inválidos."
-                ));
+                    .status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of(
+                            "mensagem",
+                            "E-mail ou senha inválidos."));
         }
 
         Usuario usuario = resultado.get();
 
         // A função vem do banco, nunca do formulário.
-        Authentication autenticacao =
-            criarAutenticacao(usuario);
+        Authentication autenticacao = criarAutenticacao(usuario);
 
         // Renova o identificador se já existir uma sessão.
         if (request.getSession(false) != null) {
@@ -104,14 +96,12 @@ public class AuthController {
 
         // Salva e registra a autenticação na sessão HTTP.
         salvarAutenticacao(
-            autenticacao,
-            request,
-            response
-        );
+                autenticacao,
+                request,
+                response);
 
         return ResponseEntity.ok(
-            converterParaDTO(usuario)
-        );
+                converterParaDTO(usuario));
     }
 
     // Retorna o usuário da sessão atual.
@@ -121,19 +111,16 @@ public class AuthController {
             Authentication autenticacao,
             HttpServletRequest request) {
 
-        Optional<Usuario> resultado =
-            buscarUsuarioAutenticado(
+        Optional<Usuario> resultado = buscarUsuarioAutenticado(
                 autenticacao,
-                request
-            );
+                request);
 
         if (resultado.isEmpty()) {
             return respostaNaoAutorizada();
         }
 
         return ResponseEntity.ok(
-            converterParaDTO(resultado.get())
-        );
+                converterParaDTO(resultado.get()));
     }
 
     // Retorna os dados privados do próprio perfil.
@@ -143,11 +130,9 @@ public class AuthController {
             Authentication autenticacao,
             HttpServletRequest request) {
 
-        Optional<Usuario> resultado =
-            buscarUsuarioAutenticado(
+        Optional<Usuario> resultado = buscarUsuarioAutenticado(
                 autenticacao,
-                request
-            );
+                request);
 
         if (resultado.isEmpty()) {
             return respostaNaoAutorizada();
@@ -155,14 +140,11 @@ public class AuthController {
 
         Usuario usuario = resultado.get();
 
-        String cpf =
-            aesCryptoUtil.decrypt(usuario.getCpf());
+        String cpf = aesCryptoUtil.decrypt(usuario.getCpf());
 
-        String telefone =
-            aesCryptoUtil.decrypt(usuario.getTelefone());
+        String telefone = aesCryptoUtil.decrypt(usuario.getTelefone());
 
-        UsuarioPerfilDTO perfil =
-            new UsuarioPerfilDTO(
+        UsuarioPerfilDTO perfil = new UsuarioPerfilDTO(
                 usuario.getIdUsuario(),
                 usuario.getNome(),
                 usuario.getEmail(),
@@ -170,8 +152,7 @@ public class AuthController {
                 telefone,
                 usuario.getFotoPerfil(),
                 usuario.getFotoAlt(),
-                usuario.getFuncao().getNome()
-            );
+                usuario.getFuncao().getNome());
 
         return ResponseEntity.ok(perfil);
     }
@@ -182,9 +163,8 @@ public class AuthController {
             CsrfToken csrfToken) {
 
         return Map.of(
-            "token",
-            csrfToken.getToken()
-        );
+                "token",
+                csrfToken.getToken());
     }
 
     // Atualiza a autenticação com os dados retornados pelo serviço.
@@ -195,33 +175,28 @@ public class AuthController {
 
         // Impede autenticar uma conta desativada.
         Usuario usuarioBanco = usuarioRepository
-            .findById(usuario.idUsuario())
-            .orElseThrow(() -> new AccessDeniedException(
-                "A conta não está disponível."
-            ));
+                .findById(usuario.idUsuario())
+                .orElseThrow(() -> new AccessDeniedException(
+                        "A conta não está disponível."));
 
         validarContaAtiva(usuarioBanco);
 
         String funcao = usuario.funcaoNome()
-            .trim()
-            .toUpperCase(Locale.ROOT);
+                .trim()
+                .toUpperCase(Locale.ROOT);
 
         var autoridades = List.of(
-            new SimpleGrantedAuthority("ROLE_" + funcao)
-        );
+                new SimpleGrantedAuthority("ROLE_" + funcao));
 
-        Authentication autenticacao =
-            new UsernamePasswordAuthenticationToken(
+        Authentication autenticacao = new UsernamePasswordAuthenticationToken(
                 usuario.email(),
                 null,
-                autoridades
-            );
+                autoridades);
 
         salvarAutenticacao(
-            autenticacao,
-            request,
-            response
-        );
+                autenticacao,
+                request,
+                response);
     }
 
     // Atualiza a autenticação após uma mudança de e-mail.
@@ -232,14 +207,12 @@ public class AuthController {
 
         validarContaAtiva(usuario);
 
-        Authentication autenticacao =
-            criarAutenticacao(usuario);
+        Authentication autenticacao = criarAutenticacao(usuario);
 
         salvarAutenticacao(
-            autenticacao,
-            request,
-            response
-        );
+                autenticacao,
+                request,
+                response);
     }
 
     // Cria a autenticação com a função definida no banco.
@@ -249,19 +222,17 @@ public class AuthController {
         validarContaAtiva(usuario);
 
         String funcao = usuario.getFuncao()
-            .getNome()
-            .trim()
-            .toUpperCase(Locale.ROOT);
+                .getNome()
+                .trim()
+                .toUpperCase(Locale.ROOT);
 
         var autoridades = List.of(
-            new SimpleGrantedAuthority("ROLE_" + funcao)
-        );
+                new SimpleGrantedAuthority("ROLE_" + funcao));
 
         return new UsernamePasswordAuthenticationToken(
-            usuario.getEmail(),
-            null,
-            autoridades
-        );
+                usuario.getEmail(),
+                null,
+                autoridades);
     }
 
     // Confirma que a conta ainda está ativa.
@@ -269,8 +240,7 @@ public class AuthController {
 
         if (usuario == null || !usuario.isAtivo()) {
             throw new AccessDeniedException(
-                "Esta conta está desativada."
-            );
+                    "Esta conta está desativada.");
         }
     }
 
@@ -281,17 +251,15 @@ public class AuthController {
             HttpServletRequest request,
             HttpServletResponse response) {
 
-        SecurityContext contexto =
-            SecurityContextHolder.createEmptyContext();
+        SecurityContext contexto = SecurityContextHolder.createEmptyContext();
 
         contexto.setAuthentication(autenticacao);
         SecurityContextHolder.setContext(contexto);
 
         securityContextRepository.saveContext(
-            contexto,
-            request,
-            response
-        );
+                contexto,
+                request,
+                response);
 
         HttpSession sessao = request.getSession(false);
 
@@ -300,8 +268,7 @@ public class AuthController {
 
             // Remove o registro anterior dessa sessão,
             // caso exista uma atualização de autenticação.
-            SessionInformation registroAnterior =
-                sessionRegistry.getSessionInformation(idSessao);
+            SessionInformation registroAnterior = sessionRegistry.getSessionInformation(idSessao);
 
             if (registroAnterior != null) {
                 sessionRegistry.removeSessionInformation(idSessao);
@@ -309,9 +276,8 @@ public class AuthController {
 
             // Registra a sessão com o e-mail do usuário.
             sessionRegistry.registerNewSession(
-                idSessao,
-                autenticacao.getName()
-            );
+                    idSessao,
+                    autenticacao.getName());
         }
     }
 
@@ -323,15 +289,13 @@ public class AuthController {
         if (autenticacao == null
                 || !autenticacao.isAuthenticated()
                 || "anonymousUser".equals(
-                    autenticacao.getPrincipal())) {
+                        autenticacao.getPrincipal())) {
 
             return Optional.empty();
         }
 
-        Optional<Usuario> resultado =
-            usuarioRepository.findByEmail(
-                autenticacao.getName()
-            );
+        Optional<Usuario> resultado = usuarioRepository.findByEmail(
+                autenticacao.getName());
 
         // Rejeita contas inexistentes ou desativadas.
         if (resultado.isEmpty() || !resultado.get().isAtivo()) {
@@ -344,8 +308,7 @@ public class AuthController {
 
             if (sessao != null) {
                 sessionRegistry.removeSessionInformation(
-                    sessao.getId()
-                );
+                        sessao.getId());
 
                 sessao.invalidate();
             }
@@ -360,11 +323,10 @@ public class AuthController {
     private ResponseEntity<?> respostaNaoAutorizada() {
 
         return ResponseEntity
-            .status(HttpStatus.UNAUTHORIZED)
-            .body(Map.of(
-                "mensagem",
-                "É necessário entrar na conta."
-            ));
+                .status(HttpStatus.UNAUTHORIZED)
+                .body(Map.of(
+                        "mensagem",
+                        "É necessário entrar na conta."));
     }
 
     // Oculta o CPF, preservando somente os três dígitos centrais.
@@ -382,12 +344,11 @@ public class AuthController {
             Usuario usuario) {
 
         return new UsuarioResponseDTO(
-            usuario.getIdUsuario(),
-            usuario.getNome(),
-            usuario.getEmail(),
-            usuario.getFotoPerfil(),
-            usuario.getFotoAlt(),
-            usuario.getFuncao().getNome()
-        );
+                usuario.getIdUsuario(),
+                usuario.getNome(),
+                usuario.getEmail(),
+                usuario.getFotoPerfil(),
+                usuario.getFotoAlt(),
+                usuario.getFuncao().getNome());
     }
 }

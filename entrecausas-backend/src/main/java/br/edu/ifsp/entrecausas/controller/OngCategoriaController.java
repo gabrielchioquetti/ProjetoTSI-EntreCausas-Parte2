@@ -12,11 +12,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import jakarta.validation.Valid;
-
 import br.edu.ifsp.entrecausas.dto.OngCategoriaRequestDTO;
 import br.edu.ifsp.entrecausas.dto.OngCategoriaResponseDTO;
 import br.edu.ifsp.entrecausas.service.OngCategoriaService;
+import jakarta.validation.Valid;
 
 // Controller responsável pelas associações entre ONGs e categorias.
 @RestController
@@ -37,36 +36,30 @@ public class OngCategoriaController {
     public ResponseEntity<OngCategoriaResponseDTO> associar(
             @Valid @RequestBody OngCategoriaRequestDTO dto) {
 
-        OngCategoriaResponseDTO response =
-            ongCategoriaService.associar(dto);
+        OngCategoriaResponseDTO response = ongCategoriaService.associar(dto);
 
         return ResponseEntity
-            .status(HttpStatus.CREATED)
-            .body(response);
+                .status(HttpStatus.CREATED)
+                .body(response);
     }
 
     // Lista as categorias associadas a uma ONG.
     @GetMapping("/ong/{idOng}")
-    public ResponseEntity<List<OngCategoriaResponseDTO>>
-            listarPorOng(
-                @PathVariable Long idOng) {
+    public ResponseEntity<List<OngCategoriaResponseDTO>> listarPorOng(
+            @PathVariable Long idOng) {
 
         return ResponseEntity.ok(
-            ongCategoriaService.listarPorOng(idOng)
-        );
+                ongCategoriaService.listarPorOng(idOng));
     }
 
     // Lista as ONGs associadas a uma categoria.
     @GetMapping("/categoria/{idCategoria}")
-    public ResponseEntity<List<OngCategoriaResponseDTO>>
-            listarPorCategoria(
-                @PathVariable Long idCategoria) {
+    public ResponseEntity<List<OngCategoriaResponseDTO>> listarPorCategoria(
+            @PathVariable Long idCategoria) {
 
         return ResponseEntity.ok(
-            ongCategoriaService.listarPorCategoria(
-                idCategoria
-            )
-        );
+                ongCategoriaService.listarPorCategoria(
+                        idCategoria));
     }
 
     // Remove uma associação pelo ID do vínculo.
@@ -75,29 +68,25 @@ public class OngCategoriaController {
             @PathVariable Long idOngCategoria) {
 
         ongCategoriaService.desassociar(
-            idOngCategoria
-        );
+                idOngCategoria);
 
         return ResponseEntity
-            .noContent()
-            .build();
+                .noContent()
+                .build();
     }
 
     // Remove uma associação diretamente pela ONG e categoria.
-    @DeleteMapping(
-        "/ong/{idOng}/categoria/{idCategoria}"
-    )
+    @DeleteMapping("/ong/{idOng}/categoria/{idCategoria}")
     public ResponseEntity<Void> desassociar(
             @PathVariable Long idOng,
             @PathVariable Long idCategoria) {
 
         ongCategoriaService.desassociar(
-            idOng,
-            idCategoria
-        );
+                idOng,
+                idCategoria);
 
         return ResponseEntity
-            .noContent()
-            .build();
+                .noContent()
+                .build();
     }
 }

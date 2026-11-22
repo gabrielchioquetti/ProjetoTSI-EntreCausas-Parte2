@@ -8,16 +8,23 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import br.edu.ifsp.entrecausas.dto.OngDetalhesAdminResponseDTO;
 import br.edu.ifsp.entrecausas.dto.OngMinhaResponseDTO;
-import br.edu.ifsp.entrecausas.dto.OngResponseDTO;
 import br.edu.ifsp.entrecausas.dto.OngPublicaResponseDTO;
+import br.edu.ifsp.entrecausas.dto.OngResponseDTO;
 import br.edu.ifsp.entrecausas.dto.SolicitacaoExclusaoDTO;
 import br.edu.ifsp.entrecausas.service.OngService;
-
 import jakarta.validation.Valid;
 
 @RestController
@@ -33,14 +40,22 @@ public class OngController {
     // Cadastra uma ONG e cria uma solicitação pendente.
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<OngResponseDTO> cadastrar(Authentication authentication, @RequestParam String nome, @RequestParam String cnpj, @RequestParam String telefone, @RequestParam(required = false) String instagram, @RequestParam String descricaoCurta, @RequestParam String descricaoCompleta, @RequestParam List<Long> categorias, @RequestParam String cep, @RequestParam String logradouro, @RequestParam String numero, @RequestParam(required = false) String complemento, @RequestParam String bairro, @RequestParam String cidade, @RequestParam String estado, @RequestParam List<MultipartFile> imagens) {
+    public ResponseEntity<OngResponseDTO> cadastrar(Authentication authentication, @RequestParam String nome,
+            @RequestParam String cnpj, @RequestParam String telefone, @RequestParam(required = false) String instagram,
+            @RequestParam String descricaoCurta, @RequestParam String descricaoCompleta,
+            @RequestParam List<Long> categorias, @RequestParam String cep, @RequestParam String logradouro,
+            @RequestParam String numero, @RequestParam(required = false) String complemento,
+            @RequestParam String bairro, @RequestParam String cidade, @RequestParam String estado,
+            @RequestParam List<MultipartFile> imagens) {
 
         // Exige uma sessão autenticada.
         if (!autenticado(authentication)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        OngResponseDTO ong = ongService.cadastrar(authentication.getName(), nome, cnpj, telefone, instagram, descricaoCurta, descricaoCompleta, categorias, cep, logradouro, numero, complemento, bairro, cidade, estado, imagens);
+        OngResponseDTO ong = ongService.cadastrar(authentication.getName(), nome, cnpj, telefone, instagram,
+                descricaoCurta, descricaoCompleta, categorias, cep, logradouro, numero, complemento, bairro, cidade,
+                estado, imagens);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(ong);
     }
@@ -48,14 +63,23 @@ public class OngController {
     // Envia uma proposta de edição para análise administrativa.
     @PostMapping(value = "/{id}/solicitar-edicao", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<Long> solicitarEdicao(Authentication authentication, @PathVariable Long id, @RequestParam String nome, @RequestParam String telefone, @RequestParam(required = false) String instagram, @RequestParam String descricaoCurta, @RequestParam String descricaoCompleta, @RequestParam List<Long> categorias, @RequestParam String cep, @RequestParam String logradouro, @RequestParam String numero, @RequestParam(required = false) String complemento, @RequestParam String bairro, @RequestParam String cidade, @RequestParam String estado, @RequestParam(required = false) List<Long> imagensMantidas, @RequestParam(required = false) List<MultipartFile> novasImagens, @RequestParam String senhaAtual) {
+    public ResponseEntity<Long> solicitarEdicao(Authentication authentication, @PathVariable Long id,
+            @RequestParam String nome, @RequestParam String telefone, @RequestParam(required = false) String instagram,
+            @RequestParam String descricaoCurta, @RequestParam String descricaoCompleta,
+            @RequestParam List<Long> categorias, @RequestParam String cep, @RequestParam String logradouro,
+            @RequestParam String numero, @RequestParam(required = false) String complemento,
+            @RequestParam String bairro, @RequestParam String cidade, @RequestParam String estado,
+            @RequestParam(required = false) List<Long> imagensMantidas,
+            @RequestParam(required = false) List<MultipartFile> novasImagens, @RequestParam String senhaAtual) {
 
         // Exige uma sessão autenticada.
         if (!autenticado(authentication)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        Long idSolicitacao = ongService.solicitarEdicao(id, authentication.getName(), nome, telefone, instagram, descricaoCurta, descricaoCompleta, categorias, cep, logradouro, numero, complemento, bairro, cidade, estado, imagensMantidas, novasImagens, senhaAtual);
+        Long idSolicitacao = ongService.solicitarEdicao(id, authentication.getName(), nome, telefone, instagram,
+                descricaoCurta, descricaoCompleta, categorias, cep, logradouro, numero, complemento, bairro, cidade,
+                estado, imagensMantidas, novasImagens, senhaAtual);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(idSolicitacao);
     }
@@ -63,7 +87,8 @@ public class OngController {
     // Envia uma solicitação de exclusão lógica para análise administrativa.
     @PostMapping(value = "/{id}/solicitar-exclusao", consumes = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<Long> solicitarExclusao(Authentication authentication, @PathVariable Long id, @Valid @RequestBody SolicitacaoExclusaoDTO dto) {
+    public ResponseEntity<Long> solicitarExclusao(Authentication authentication, @PathVariable Long id,
+            @Valid @RequestBody SolicitacaoExclusaoDTO dto) {
 
         // Exige uma sessão autenticada.
         if (!autenticado(authentication)) {
@@ -71,14 +96,15 @@ public class OngController {
         }
 
         // A ONG permanece ativa até a aprovação administrativa.
-        Long idSolicitacao = ongService.solicitarExclusao(id, authentication.getName(), dto.motivoExclusao(), dto.detalhesExclusao());
+        Long idSolicitacao = ongService.solicitarExclusao(id, authentication.getName(), dto.motivoExclusao(),
+                dto.detalhesExclusao());
 
         return ResponseEntity.status(HttpStatus.CREATED).body(idSolicitacao);
     }
 
     // Lista somente as ONGs aprovadas.
     @GetMapping
-    public ResponseEntity<List<OngPublicaResponseDTO>> listarTodas(){
+    public ResponseEntity<List<OngPublicaResponseDTO>> listarTodas() {
 
         return ResponseEntity.ok(ongService.listarTodas());
     }
@@ -87,7 +113,7 @@ public class OngController {
     @GetMapping("/admin/{id}/detalhes")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'MASTER')")
     public ResponseEntity<OngDetalhesAdminResponseDTO> buscarDetalhesAdmin(@PathVariable Long id) {
-        
+
         return ResponseEntity.ok(ongService.buscarDetalhesAdmin(id));
     }
 
@@ -102,7 +128,7 @@ public class OngController {
 
         Optional<OngMinhaResponseDTO> ong = ongService.buscarMinhaOng(authentication.getName());
 
-        return ong.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.noContent().build() );
+        return ong.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.noContent().build());
     }
 
     // Busca uma ONG aprovada pelo identificador.
@@ -129,6 +155,7 @@ public class OngController {
     // Verifica se existe uma autenticação válida.
     private boolean autenticado(Authentication authentication) {
 
-        return authentication != null && authentication.isAuthenticated() && !"anonymousUser".equals(authentication.getPrincipal());
+        return authentication != null && authentication.isAuthenticated()
+                && !"anonymousUser".equals(authentication.getPrincipal());
     }
 }

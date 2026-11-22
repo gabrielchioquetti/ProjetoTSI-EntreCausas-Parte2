@@ -13,11 +13,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import jakarta.validation.Valid;
-
 import br.edu.ifsp.entrecausas.dto.EnderecoRequestDTO;
 import br.edu.ifsp.entrecausas.dto.EnderecoResponseDTO;
 import br.edu.ifsp.entrecausas.service.EnderecoService;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/enderecos")
@@ -37,12 +36,11 @@ public class EnderecoController {
     public ResponseEntity<EnderecoResponseDTO> cadastrar(
             @Valid @RequestBody EnderecoRequestDTO dto) {
 
-        EnderecoResponseDTO response =
-            enderecoService.cadastrar(dto);
+        EnderecoResponseDTO response = enderecoService.cadastrar(dto);
 
         return ResponseEntity
-            .status(HttpStatus.CREATED)
-            .body(response);
+                .status(HttpStatus.CREATED)
+                .body(response);
     }
 
     // Endpoint GET: Lista todos os endereços do sistema.
@@ -50,8 +48,7 @@ public class EnderecoController {
     public ResponseEntity<List<EnderecoResponseDTO>> listar() {
 
         return ResponseEntity.ok(
-            enderecoService.listarTodos()
-        );
+                enderecoService.listarTodos());
     }
 
     // Endpoint GET: Busca um endereço por ID.
@@ -60,8 +57,7 @@ public class EnderecoController {
             @PathVariable Long id) {
 
         return ResponseEntity.ok(
-            enderecoService.buscarPorId(id)
-        );
+                enderecoService.buscarPorId(id));
     }
 
     // Endpoint GET: Busca o endereço de uma ONG.
@@ -70,8 +66,7 @@ public class EnderecoController {
             @PathVariable Long idOng) {
 
         return ResponseEntity.ok(
-            enderecoService.buscarPorOng(idOng)
-        );
+                enderecoService.buscarPorOng(idOng));
     }
 
     // Endpoint PUT: Atualiza um endereço existente pelo ID.
@@ -80,8 +75,7 @@ public class EnderecoController {
             @PathVariable Long id,
             @Valid @RequestBody EnderecoRequestDTO dto) {
 
-        EnderecoResponseDTO response =
-            enderecoService.atualizar(id, dto);
+        EnderecoResponseDTO response = enderecoService.atualizar(id, dto);
 
         return ResponseEntity.ok(response);
     }
@@ -94,7 +88,7 @@ public class EnderecoController {
         enderecoService.deletar(id);
 
         return ResponseEntity
-            .noContent()
-            .build();
+                .noContent()
+                .build();
     }
 }
